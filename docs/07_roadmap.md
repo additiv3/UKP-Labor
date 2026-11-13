@@ -10,7 +10,7 @@ Status: ☐ offen · ◐ in Arbeit · ☑ fertig. Nach jedem Meilenstein aktuali
 | 0.4 | Logbuch: Reihen, Versuche, Duplizieren, ID-Generator, abgeleitete Werte + Snapshot, Filter/Suche | ☑ |
 | 0.5 | Export JSON/CSV, Import mit Merge-Vorschau, Backup-Erinnerung, Hauptlogbuch (File System Access) | ☑ |
 | 0.6 | Matrix-Generator, „Aus Rechner übernehmen“ | ☑ |
-| 0.7 | Notizen/Tagebuch mit Markdown/KaTeX, Verlinkung, Formelsammlung | ☐ |
+| 0.7 | Notizen/Tagebuch mit Markdown/KaTeX, Verlinkung, Formelsammlung | ☑ |
 | 0.8 | D²-Fit und Inkubationsfit im Rechner (Rechenkern + Tests bereits in 0.2) | ◐ |
 | später | Android-Test, weitere Rechner (Wärmeakkumulation, Burst), Druckansicht Versuch | ☐ |
 
@@ -96,6 +96,19 @@ Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entsteh
   Komponenten und Werkstoff der Vorlagen.
 - **„Aus Rechner“** in der Reihe: neuer Versuch aus dem zuletzt im Rechner eingestellten Stand.
 
+## Stand 0.7 (umgesetzt)
+- **Notizen-Reiter:** „+ Tagebuch“ (Datum heute, Titel optional) und „+ Notiz“; Liste mit Ansicht Alle/Tagebuch/Notizen,
+  Volltextsuche und Tag-Filter, neueste zuerst (Tagebuch mit Wochentag).
+- **Editor** mit Autosave: Art, Titel, Datum, Tags, Inhalt in Markdown; Umschalter Bearbeiten/Vorschau am Handy,
+  ab 1200 px Editor und Vorschau nebeneinander. „Verweis einfügen“ setzt `[[ID]]` an der Cursorposition.
+- **Markdown** (`src/core/markdown.ts`, eigener Parser, getestet): Überschriften, Absätze, Listen, Aufgaben `- [ ]`,
+  Zitat, Code, Linie, fett/kursiv, Links (nur http/https/mailto), Formeln `$…$` und `$$…$$` (KaTeX),
+  Verweise `[[B1-Si-001]]` (Versuch) bzw. `[[B1]]` (Reihe); unbekannte Verweise gelb markiert.
+- **Verlinkung:** Verweise werden beim Speichern in `links` abgelegt. Versuch und Reihe zeigen „Notizen“ mit allen
+  Notizen, die auf sie verweisen, und „+ Notiz zu …“ (legt Tagebucheintrag mit Verweis an).
+- **Formelsammlung** (Notizen → Formelsammlung) aus `formulaCatalog.ts`, dieselben LaTeX-Ausdrücke wie im Rechner;
+  Test prüft, dass jede Formel fehlerfrei mit KaTeX gerendert wird.
+
 ## Entscheidungen
 - **Paketversionen:** TypeScript bleibt auf 6.0.x, weil typescript-eslint TypeScript 7 noch nicht unterstützt.
 - **Pages-Workflow nur im öffentlichen Repo:** `pages.yml` liegt auch im privaten Repo (damit der Code-Stand identisch ist),
@@ -164,3 +177,11 @@ Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entsteh
 - **Materialwerte (F_th, δ, S)** gehen nicht in den Versuch (gehören zum Werkstoff, nicht zu den eingestellten Parametern).
 - **w₀ aus dem Rechner:** „aus Optik“ → Quelle „berechnet“; „w₀ direkt“ → Quelle „Datenblatt“, wenn der Wert dem
   Datenblatt der gewählten Optik entspricht, sonst ohne Quelle.
+- **Eigener Markdown-Parser statt Bibliothek:** kleiner Funktionsumfang für Labornotizen, keine zusätzliche Abhängigkeit,
+  und es wird nie HTML aus dem Text übernommen (kein XSS möglich; `<script>` erscheint als Text, `javascript:`-Links
+  bleiben Text). Einfacher Zeilenumbruch = Umbruch (praktisch für Notizen am Handy).
+- **`$` als Formelzeichen** nur, wenn direkt danach kein Leerzeichen und nach dem schließenden `$` keine Ziffer steht
+  (Geldbeträge wie „$5 und $10“ bleiben Text).
+- **Verweise über die Versuchs-ID bzw. den Reihen-Code** (nicht die UUID), damit sie lesbar und tippbar sind. Wird eine
+  Versuchs-ID später geändert, zeigt der alte Verweis „nicht gefunden“.
+- **Wochentag/Datum** im Tagebuch statt Pflicht-Titel: Ein Tagebucheintrag braucht keinen Titel.

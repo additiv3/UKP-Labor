@@ -26,6 +26,7 @@ import { BackLink } from '../../components/MasterDetail';
 import { asLaser, asOptik, asScanner } from '../calculator/presets';
 import { STATUS_LABEL, W0_QUELLE_LABEL } from './labels';
 import { duplicate } from './actions';
+import { Mentions } from '../notes/Mentions';
 
 type P = ExperimentParams;
 const pct = (x: number | undefined) => (x === undefined ? '–' : `${formatNumber(x * 100, 4)} %`);
@@ -427,6 +428,7 @@ export function ExperimentDetail() {
     <div className="stack">
       <BackLink to={`/logbuch/r/${exp.seriesId}`} label={series ? `${series.code} ${series.titel}`.trim() : 'Reihe'} />
       <ExperimentForm key={exp.id} exp={exp} />
+      <Mentions refId={exp.versuchsId} />
     </div>
   );
 }

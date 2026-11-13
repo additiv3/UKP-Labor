@@ -16,6 +16,7 @@ import { ExperimentList } from './ExperimentList';
 import { SERIES_STATUS_LABEL } from './labels';
 import { createEmptyExperiment, createFromTransfer, duplicate } from './actions';
 import { useLookups } from './useLookups';
+import { Mentions } from '../notes/Mentions';
 
 function SeriesForm({ series, codeTaken }: { series: Series; codeTaken: (code: string) => boolean }) {
   const { draft, change, status, error } = useAutosave(
@@ -129,6 +130,7 @@ export function SeriesDetail() {
         )}
       </section>
 
+      <Mentions refId={series.code} />
       <SeriesForm key={series.id} series={series} codeTaken={(c) => others.some((o) => o.code === c)} />
 
       <section className="card row wrap">

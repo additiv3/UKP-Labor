@@ -78,7 +78,20 @@ export const experimentsRepo = {
     return all.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
   },
 };
-export const notesRepo = createRepo<Note>(db.notes);
+export const notesRepo = {
+  ...createRepo<Note>(db.notes),
+  /** Neueste zuerst (Datum, dann letzte Änderung). */
+  async listSorted(): Promise<Note[]> {
+    return (await db.notes.filter(alive).toArray()).sort(
+      (a, b) => b.datum.localeCompare(a.datum) || b.updatedAt.localeCompare(a.updatedAt),
+    );
+  },
+  /** Notizen, die per [[…]] auf eine der Referenzen verweisen. */
+  async mentioning(refs: string[]): Promise<Note[]> {
+    const set = new Set(refs.filter(Boolean));
+    return (await notesRepo.listSorted()).filter((n) => n.links.some((l) => set.has(l)));
+  },
+};
 
 /** Anlage samt Komponenten weich löschen. */
 export async function removeSystemCascade(systemId: string): Promise<void> {

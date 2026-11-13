@@ -648,7 +648,8 @@ a:focus-visible {
   }
   .md .back-link[href$='/anlagen'],
   .md .back-link[href$='/material'],
-  .md .back-link[href$='/logbuch'] {
+  .md .back-link[href$='/logbuch'],
+  .md .back-link[href$='/notizen'] {
     display: none;
   }
 }
@@ -980,4 +981,141 @@ input[type='date'] {
 .range-row > input {
   min-width: 0;
   width: 100%;
+}
+
+/* ---------------------------------------------------------------- Notizen */
+
+.note-snippet {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.note-toolbar {
+  flex-wrap: wrap;
+}
+.note-toolbar select {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+.note-text {
+  width: 100%;
+  min-height: 55vh;
+  padding: 0.75rem;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 15px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.note-edit .note-preview,
+.note-view .note-text {
+  display: none;
+}
+@media (min-width: 1200px) {
+  .note-editor {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    align-items: start;
+  }
+  .note-edit .note-preview,
+  .note-view .note-text {
+    display: block;
+  }
+  .note-mode {
+    display: none;
+  }
+  .note-preview {
+    border-left: 1px solid var(--border);
+    padding-left: 1rem;
+  }
+}
+
+.md-view {
+  overflow-wrap: anywhere;
+}
+.md-view h3,
+.md-view h4,
+.md-view h5 {
+  margin: 1rem 0 0.4rem;
+}
+.md-view h3 {
+  font-size: 1.2rem;
+}
+.md-view h4 {
+  font-size: 1.05rem;
+}
+.md-view p,
+.md-view ul,
+.md-view ol,
+.md-view blockquote,
+.md-view pre {
+  margin: 0 0 0.7rem;
+}
+.md-view ul,
+.md-view ol {
+  padding-left: 1.3rem;
+}
+.md-view ul.tasks {
+  list-style: none;
+  padding-left: 0.2rem;
+}
+.md-view ul.tasks input {
+  min-height: 0;
+  width: 18px;
+  height: 18px;
+  margin: 0 0.5rem 0 0;
+  vertical-align: -3px;
+  accent-color: var(--accent);
+}
+.md-view blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 0.75rem;
+  color: var(--text-muted);
+}
+.md-view pre {
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.75rem;
+  overflow-x: auto;
+}
+.md-view code {
+  background: var(--surface-2);
+  border-radius: 4px;
+  padding: 0 0.25rem;
+  word-break: normal;
+}
+.md-view pre code {
+  padding: 0;
+}
+.md-view hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 1rem 0;
+}
+.md-math {
+  overflow-x: auto;
+}
+.wiki {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.wiki-missing {
+  color: var(--warn);
+  text-decoration: underline dotted;
+}
+.formula-entry {
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--border);
+}
+.formula-entry:first-of-type {
+  border-top: 0;
+}
+.formula-name {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.formula-tex {
+  overflow-x: auto;
 }
