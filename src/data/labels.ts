@@ -1,4 +1,4 @@
-import type { ComponentType, LitGroesse, MaterialClass } from './types';
+import type { ComponentType, LitGroesse, MaterialClass, SyncTable } from './types';
 import type { Quantity } from '../core/physics/units';
 
 export const MATERIAL_CLASS_LABEL: Record<MaterialClass, string> = {
@@ -33,4 +33,15 @@ export const LIT_QUANTITY: Record<Exclude<LitGroesse, 'sonstig'>, Quantity> = {
   Fth: 'fluence',
   delta: 'length',
   S: 'none',
+};
+
+export const TABLE_LABEL: Record<SyncTable, string> = {
+  systems: 'Anlagen',
+  components: 'Komponenten',
+  materials: 'Werkstoffe',
+  litValues: 'Literaturwerte',
+  samples: 'Proben',
+  series: 'Versuchsreihen',
+  experiments: 'Versuche',
+  notes: 'Notizen',
 };

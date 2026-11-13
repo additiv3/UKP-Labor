@@ -8,7 +8,7 @@ Status: ☐ offen · ◐ in Arbeit · ☑ fertig. Nach jedem Meilenstein aktuali
 | 0.2 | Rechenkern komplett mit Tests (`04_formeln.md`), Rechner-UI ohne Presets, Kaustik-Plot | ☑ |
 | 0.3 | Anlagen & Komponenten, Werkstoffe (Seed), Literaturwerte, Proben; Presets im Rechner + Grenzwertwarnungen | ☑ |
 | 0.4 | Logbuch: Reihen, Versuche, Duplizieren, ID-Generator, abgeleitete Werte + Snapshot, Filter/Suche | ☑ |
-| 0.5 | Export JSON/CSV, Import mit Merge-Vorschau, Backup-Erinnerung, Hauptlogbuch (File System Access) | ☐ |
+| 0.5 | Export JSON/CSV, Import mit Merge-Vorschau, Backup-Erinnerung, Hauptlogbuch (File System Access) | ☑ |
 | 0.6 | Matrix-Generator, „Aus Rechner übernehmen“ | ☐ |
 | 0.7 | Notizen/Tagebuch mit Markdown/KaTeX, Verlinkung, Formelsammlung | ☐ |
 | 0.8 | D²-Fit und Inkubationsfit im Rechner (Rechenkern + Tests bereits in 0.2) | ◐ |
@@ -69,6 +69,23 @@ Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entsteh
 - **Alle Versuche:** Volltextsuche (ID, Bemerkung, Tags, Strategie, Atmosphäre, Absaugung) und Filter (Reihe, Werkstoff,
   Anlage, Tag, Status, Zeitraum); Liste mit ID, Datum, Werkstoff, Kernparametern und F₀.
 
+## Stand 0.5 (umgesetzt)
+- **Kern** `src/core/exchange/` (getestet): zod-Schemas aller Entitäten (`schema.ts`), JSON-Export mit Kopf
+  (`app`, `schemaVersion`, `formelVersion`, `exportedAt`, Gerät) inkl. Tombstones (`exportJson.ts`), CSV der Versuche mit den
+  Spalten aus `05_export-sync.md` (`exportCsv.ts`), Merge-Planung nach den Regeln 1–6 (`importMerge.ts`).
+- **Import:** Datei wählen → Vorschau (neu / aktualisiert / gelöscht / hier neuer, Konflikte, ungültige Datensätze) →
+  „Übernehmen“ schreibt alles in einer Transaktion. Fehlerhafte Dateien ergeben eine Meldung, keinen Absturz; ungültige
+  Einzeldatensätze werden übersprungen und aufgelistet. Dateien aus neuerer Schema-Version werden abgelehnt.
+- **Export:** iPhone/Android über das Teilen-Menü („In Dateien sichern“ → Sync-Ordner), am Laptop als Download.
+  Dateiname `JJJJMMTT_ukp-labor_<gerät>.json` bzw. `.csv`.
+- **Hauptlogbuch (Chrome/Edge am Laptop):** Ordner im Sync-Ordner wählen (wird gemerkt); „Abgleichen & speichern“ liest
+  `logbuch.json`, zeigt die Vorschau, übernimmt und schreibt `logbuch.json` + `logbuch.csv` zurück. Gibt es noch keine
+  Datei, wird sie angelegt.
+- **Backup-Erinnerung:** Hinweis oben auf jeder Seite, wenn eigene Daten existieren und der letzte Export > 7 Tage her ist.
+- **Daten zurücksetzen** in den Einstellungen (doppelte Bestätigung, Startbibliothek wird neu angelegt).
+- Getestet: Rundreise Export → Reset → Import ergibt identische Daten; zwei Geräte konvergieren; Hauptlogbuch mit
+  nachgebautem Ordner; im Browser zwei getrennte Profile (Laptop/iPhone) mit Konflikt.
+
 ## Entscheidungen
 - **Paketversionen:** TypeScript bleibt auf 6.0.x, weil typescript-eslint TypeScript 7 noch nicht unterstützt.
 - **Pages-Workflow nur im öffentlichen Repo:** `pages.yml` liegt auch im privaten Repo (damit der Code-Stand identisch ist),
@@ -116,3 +133,15 @@ Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entsteh
 - **Reihen-Code** ohne Leerzeichen und Bindestrich, eindeutig; eine Änderung betrifft nur neue Versuchs-IDs.
 - **Reihenansicht:** Versuche stehen oben, die Stammdaten der Reihe darunter (am Handy ist die Versuchsliste das Ziel).
 - **Release-Tags** können aus der Cloud-Sitzung nicht gepusht werden (Git-Proxy lehnt Tags ab); Tags bei Bedarf auf GitHub anlegen.
+- **Konflikt-Umbenennung bekommt einen neuen Zeitstempel:** Der importierte Versuch mit `-K1` erhält `updatedAt = jetzt`,
+  damit die Umbenennung beim nächsten Abgleich auf alle Geräte gelangt und die Geräte denselben Stand haben.
+- **Doppelte Reihen-Codes** (z. B. „B1“ auf zwei Geräten unabhängig angelegt) werden in der Vorschau gemeldet, aber nicht
+  automatisch umbenannt; die Reihe wird im Logbuch umbenannt, Versuchs-IDs bleiben.
+- **Ungültige Datensätze** werden einzeln übersprungen statt die ganze Datei abzulehnen (Bericht in der Vorschau).
+  Unbekannte Zusatzfelder bleiben erhalten (vorwärtskompatibel innerhalb einer Schema-Version).
+- **CSV:** `pAvg_W`/`ePuls_uJ` = eingegebener Wert, sonst aus dem Snapshot abgeleitet; `pulsabstand_um` ebenso;
+  `F0_J_cm2` = Spitzenfluenz im Fokus (Snapshot). Zeilenende CRLF für Excel, Felder mit `;`, `"` oder Zeilenumbruch in Anführungszeichen.
+- **Tombstones werden nicht hart gelöscht** (Platzbedarf gering); so bleiben Löschungen über beliebig viele Geräte konsistent.
+- **Hauptlogbuch nur per Abgleich:** Es gibt bewusst kein „nur speichern“, damit die Datei nie Änderungen anderer Geräte
+  überschreibt.
+- **Einstellungen werden nicht exportiert** (gerätespezifisch).

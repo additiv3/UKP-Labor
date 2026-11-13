@@ -2,6 +2,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { TABS } from './nav';
 import { IconSettings } from './icons';
 import { UpdatePrompt } from './UpdatePrompt';
+import { BackupReminder } from './BackupReminder';
 
 function useTitle(): string {
   const { pathname } = useLocation();
@@ -40,6 +41,7 @@ export function Layout() {
           </NavLink>
         </header>
         <main className="content">
+          <BackupReminder />
           <Outlet />
         </main>
       </div>

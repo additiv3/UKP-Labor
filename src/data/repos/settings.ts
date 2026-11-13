@@ -9,6 +9,8 @@ export const SETTING_DEFAULTS: Omit<SettingsMap, 'deviceId'> = {
   lastExportAt: undefined,
   units: {},
   calculator: undefined,
+  masterDir: undefined,
+  lastMasterSyncAt: undefined,
 };
 
 export async function getSetting<K extends SettingKey>(key: K): Promise<SettingsMap[K] | undefined> {

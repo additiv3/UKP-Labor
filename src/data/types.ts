@@ -275,6 +275,10 @@ export interface SettingsMap {
   units: Record<string, string>;
   /** Zuletzt verwendete Rechner-Eingaben (Struktur siehe features/calculator/state.ts) */
   calculator: unknown;
+  /** Ordner des Hauptlogbuchs (FileSystemDirectoryHandle, nur Chrome/Edge am Laptop) */
+  masterDir: unknown;
+  /** Letzter Abgleich mit dem Hauptlogbuch (ISO) */
+  lastMasterSyncAt: string | undefined;
 }
 export type SettingKey = keyof SettingsMap;
 export interface SettingRow<K extends SettingKey = SettingKey> {

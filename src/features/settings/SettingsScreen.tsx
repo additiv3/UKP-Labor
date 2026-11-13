@@ -12,6 +12,8 @@ import type { Theme } from '../../data/types';
 import { SCHEMA_VERSION } from '../../data/db';
 import { FORMEL_VERSION } from '../../core/physics/version';
 import { systemsRepo } from '../../data/repos';
+import { resetAllData } from '../../data/exchange';
+import { ExchangeSection } from './ExchangeSection';
 
 const PERSIST_LABEL: Record<PersistStatus, string> = {
   persistent: 'Dauerhaft gespeichert',
@@ -44,6 +46,13 @@ export function SettingsScreen() {
 
   const name = nameDraft ?? deviceName ?? '';
 
+  const reset = async () => {
+    if (!window.confirm('Wirklich ALLE Daten auf diesem Gerät löschen? Das lässt sich nicht rückgängig machen.')) return;
+    if (window.prompt('Zur Bestätigung „LÖSCHEN“ eingeben:')?.trim().toUpperCase() !== 'LÖSCHEN') return;
+    await resetAllData();
+    window.alert('Alle Daten wurden gelöscht.');
+  };
+
   return (
     <div className="stack">
       <section className="card">
@@ -62,6 +71,8 @@ export function SettingsScreen() {
         </label>
         <p className="muted small">Erscheint im Dateinamen von Exporten. Geräte-ID: <code>{deviceId ?? '…'}</code></p>
       </section>
+
+      <ExchangeSection />
 
       <section className="card">
         <h2>Standard-Anlage</h2>
@@ -124,8 +135,14 @@ export function SettingsScreen() {
       </section>
 
       <section className="card">
-        <h2>Export / Import</h2>
-        <p className="muted">Verfügbar ab Version 0.5.</p>
+        <h2>Daten zurücksetzen</h2>
+        <p className="muted small">
+          Löscht alle Anlagen, Werkstoffe, Versuche und Notizen auf diesem Gerät endgültig (die Startbibliothek wird neu angelegt).
+          Vorher exportieren!
+        </p>
+        <button type="button" className="btn btn-danger" onClick={() => void reset()}>
+          Alle Daten auf diesem Gerät löschen …
+        </button>
       </section>
 
       <section className="card">
