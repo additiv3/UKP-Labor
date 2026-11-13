@@ -77,3 +77,22 @@ describe('Repository-Abfragen', () => {
     expect((await materialsRepo.listSorted()).some((x) => x.id === m.id)).toBe(false);
   });
 });
+
+describe('Logbuch-Repositories', () => {
+  it('Reihen sortiert, Versuche je Reihe, ID-Prüfung, Kaskade', async () => {
+    const { seriesRepo, experimentsRepo, removeSeriesCascade } = await import('./repos');
+    const b10 = await seriesRepo.create({ code: 'B10', titel: 'x', status: 'geplant' });
+    const b2 = await seriesRepo.create({ code: 'B2', titel: 'y', status: 'laufend' });
+    expect((await seriesRepo.listSorted()).map((s) => s.code)).toEqual(['B2', 'B10']);
+    const e1 = await experimentsRepo.create({ versuchsId: 'B2-Si-001', seriesId: b2.id, datum: '2026-11-13', params: {}, tags: [], status: 'durchgefuehrt' });
+    await experimentsRepo.create({ versuchsId: 'B10-Si-001', seriesId: b10.id, datum: '2026-11-13', params: {}, tags: [], status: 'durchgefuehrt' });
+    expect(await experimentsRepo.bySeries(b2.id)).toHaveLength(1);
+    expect(await experimentsRepo.isVersuchsIdTaken('B2-Si-001')).toBe(true);
+    expect(await experimentsRepo.isVersuchsIdTaken('B2-Si-001', e1.id)).toBe(false);
+    await removeSeriesCascade(b2.id);
+    expect(await experimentsRepo.bySeries(b2.id)).toHaveLength(0);
+    expect(await experimentsRepo.isVersuchsIdTaken('B2-Si-001')).toBe(false);
+    // gelöschte IDs bleiben für die Nummernvergabe reserviert
+    expect(await experimentsRepo.allVersuchsIds()).toContain('B2-Si-001');
+  });
+});

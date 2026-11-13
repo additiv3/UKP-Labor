@@ -51,8 +51,33 @@ export const samplesRepo = {
   },
 };
 
-export const seriesRepo = createRepo<Series>(db.series);
-export const experimentsRepo = createRepo<Experiment>(db.experiments);
+export const seriesRepo = {
+  ...createRepo<Series>(db.series),
+  async listSorted(): Promise<Series[]> {
+    return (await db.series.filter(alive).toArray()).sort((a, b) => a.code.localeCompare(b.code, 'de', { numeric: true }));
+  },
+};
+
+export const experimentsRepo = {
+  ...createRepo<Experiment>(db.experiments),
+  async bySeries(seriesId: string): Promise<Experiment[]> {
+    return db.experiments.where('seriesId').equals(seriesId).filter(alive).toArray();
+  },
+  /** Alle Versuchs-IDs inkl. gelöschter (damit keine Nummer doppelt vergeben wird). */
+  async allVersuchsIds(): Promise<string[]> {
+    return (await db.experiments.toArray()).map((e) => e.versuchsId);
+  },
+  /** true, wenn ein anderer (nicht gelöschter) Versuch diese Versuchs-ID trägt. */
+  async isVersuchsIdTaken(versuchsId: string, exceptId?: string): Promise<boolean> {
+    const hits = await db.experiments.where('versuchsId').equals(versuchsId).filter(alive).toArray();
+    return hits.some((e) => e.id !== exceptId);
+  },
+  /** Zuletzt bearbeiteter Versuch (Vorlage für „aus letztem Versuch duplizieren“). */
+  async latest(seriesId?: string): Promise<Experiment | undefined> {
+    const all = await db.experiments.filter((e) => alive(e) && (!seriesId || e.seriesId === seriesId)).toArray();
+    return all.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+  },
+};
 export const notesRepo = createRepo<Note>(db.notes);
 
 /** Anlage samt Komponenten weich löschen. */
@@ -66,4 +91,10 @@ export async function removeMaterialCascade(materialId: string): Promise<void> {
   for (const l of await litValuesRepo.byMaterial(materialId)) await litValuesRepo.remove(l.id);
   for (const s of await samplesRepo.byMaterial(materialId)) await samplesRepo.remove(s.id);
   await materialsRepo.remove(materialId);
+}
+
+/** Versuchsreihe samt Versuchen weich löschen. */
+export async function removeSeriesCascade(seriesId: string): Promise<void> {
+  for (const e of await experimentsRepo.bySeries(seriesId)) await experimentsRepo.remove(e.id);
+  await seriesRepo.remove(seriesId);
 }

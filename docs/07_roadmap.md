@@ -7,7 +7,7 @@ Status: ☐ offen · ◐ in Arbeit · ☑ fertig. Nach jedem Meilenstein aktuali
 | 0.1 | Projekt-Setup (Vite/React/TS, Lint, Vitest), PWA-Manifest + Service Worker, GitHub-Actions-Deployment, Navigation mit 5 leeren Reitern + Einstellungen, Dexie-Schema aller Entitäten, `persist()` | ☑ |
 | 0.2 | Rechenkern komplett mit Tests (`04_formeln.md`), Rechner-UI ohne Presets, Kaustik-Plot | ☑ |
 | 0.3 | Anlagen & Komponenten, Werkstoffe (Seed), Literaturwerte, Proben; Presets im Rechner + Grenzwertwarnungen | ☑ |
-| 0.4 | Logbuch: Reihen, Versuche, Duplizieren, ID-Generator, abgeleitete Werte + Snapshot, Filter/Suche | ☐ |
+| 0.4 | Logbuch: Reihen, Versuche, Duplizieren, ID-Generator, abgeleitete Werte + Snapshot, Filter/Suche | ☑ |
 | 0.5 | Export JSON/CSV, Import mit Merge-Vorschau, Backup-Erinnerung, Hauptlogbuch (File System Access) | ☐ |
 | 0.6 | Matrix-Generator, „Aus Rechner übernehmen“ | ☐ |
 | 0.7 | Notizen/Tagebuch mit Markdown/KaTeX, Verlinkung, Formelsammlung | ☐ |
@@ -56,6 +56,19 @@ Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entsteh
 - **Grenzwertwarnungen** (gelb, `src/core/limits.ts`, getestet): P_avg > P_max, E_p > E_max, f_rep außerhalb des Bereichs,
   τ außerhalb des Bereichs, λ nicht im Datenblatt, v > v_max.
 
+## Stand 0.4 (umgesetzt)
+- **Versuchsreihen:** Liste mit Anzahl Versuche; Reihe mit Code (B1, B2 … vorgeschlagen, eindeutig), Titel, Ziel, Status, Notizen.
+- **Versuche:** Versuchs-ID automatisch `<Reihe>-<Kürzel>-<Nr>`, Datum, Status (geplant/durchgeführt/verworfen), Anlage →
+  Laser/Optik/Scanner, Werkstoff → Probe, alle Parameter aus dem Datenmodell mit Einheitenwahl, Burst, w₀ mit Quelle
+  („w₀ berechnen“ aus Optik + Rohstrahl, „w₀ laut Datenblatt“), Bemerkung, Tags.
+- **Abgeleitete Werte** live (E_p/P_avg am Werkstück, F₀, F₀(z), I₀, z_R, Δx, OL, N_1D, N_2D, OL_h) und bei jedem Speichern
+  als Snapshot mit `formelVersion` (`src/core/logbook.ts`, getestet).
+- **Duplizieren** (im Versuch und „Duplizieren aus <letzter Versuch>“ in der Reihe): gleiche Parameter, Anlage, Probe, Tags;
+  neue laufende Nummer, heutiges Datum, leere Bemerkung.
+- **Grenzwertwarnungen** wie im Rechner; Warnung, wenn P_avg und E_p beide eingetragen sind und nicht zu f_rep passen.
+- **Alle Versuche:** Volltextsuche (ID, Bemerkung, Tags, Strategie, Atmosphäre, Absaugung) und Filter (Reihe, Werkstoff,
+  Anlage, Tag, Status, Zeitraum); Liste mit ID, Datum, Werkstoff, Kernparametern und F₀.
+
 ## Entscheidungen
 - **Paketversionen:** TypeScript bleibt auf 6.0.x, weil typescript-eslint TypeScript 7 noch nicht unterstützt.
 - **Pages-Workflow nur im öffentlichen Repo:** `pages.yml` liegt auch im privaten Repo (damit der Code-Stand identisch ist),
@@ -93,3 +106,13 @@ Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entsteh
 - **Grenzwerte gelten an der Quelle**, also vor der Abschwächung T. Ohne gewählte Komponente gibt es keine Warnungen.
 - **Temperatur intern in K**, Eingabe wahlweise in °C (Einheiten mit Nullpunktverschiebung in `units.ts`).
 - **Kürzel** dürfen keine Leerzeichen und keinen Bindestrich enthalten (Bindestrich trennt die Teile der Versuchs-ID).
+- **Neuer Versuch:** Status „durchgeführt“ (Logbuch hält fest, was eingestellt war); Werkstoff, Probe und Anlage vom zuletzt
+  bearbeiteten Versuch der Reihe, sonst Standard-Anlage. Ohne Werkstoff lautet das Kürzel „X“ (B1-X-001); nach Wahl des
+  Werkstoffs bietet die App „ID neu vergeben“ an. IDs werden nie automatisch umbenannt.
+- **Eindeutige Versuchs-ID:** Eine doppelte ID wird nicht gespeichert (Hinweis am Feld). Laufende Nummern gelöschter Versuche
+  werden nicht neu vergeben.
+- **Snapshot** enthält nur Werte aus den Versuchsparametern (keine Materialwerte wie Kraterdurchmesser), damit er nicht von
+  später geänderten Literaturwerten abhängt.
+- **Reihen-Code** ohne Leerzeichen und Bindestrich, eindeutig; eine Änderung betrifft nur neue Versuchs-IDs.
+- **Reihenansicht:** Versuche stehen oben, die Stammdaten der Reihe darunter (am Handy ist die Versuchsliste das Ziel).
+- **Release-Tags** können aus der Cloud-Sitzung nicht gepusht werden (Git-Proxy lehnt Tags ab); Tags bei Bedarf auf GitHub anlegen.
