@@ -1,4 +1,8 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { getSetting } from '../../data/repos/settings';
+import { derive } from '../../core/physics/derive';
+import { normalizeCalcState } from '../calculator/state';
+import { calcToExperiment } from '../calculator/toExperiment';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { experimentsRepo, removeSeriesCascade, seriesRepo } from '../../data/repos';
 import type { Series, SeriesStatus } from '../../data/types';
@@ -10,7 +14,7 @@ import { SaveBadge } from '../../components/SaveBadge';
 import { BackLink } from '../../components/MasterDetail';
 import { ExperimentList } from './ExperimentList';
 import { SERIES_STATUS_LABEL } from './labels';
-import { createEmptyExperiment, duplicate } from './actions';
+import { createEmptyExperiment, createFromTransfer, duplicate } from './actions';
 import { useLookups } from './useLookups';
 
 function SeriesForm({ series, codeTaken }: { series: Series; codeTaken: (code: string) => boolean }) {
@@ -74,6 +78,18 @@ export function SeriesDetail() {
 
   const addEmpty = async () => navigate(`/logbuch/v/${(await createEmptyExperiment(seriesId)).id}`);
   const addDup = async () => last && navigate(`/logbuch/v/${(await duplicate(last)).id}`);
+  const addFromCalc = async () => {
+    const st = normalizeCalcState(await getSetting('calculator'));
+    const v = st.v;
+    const d = derive({
+      ...v,
+      pAvg: st.energyMode === 'pAvg' ? v.pAvg : undefined,
+      ePuls: st.energyMode === 'ePuls' ? v.ePuls : undefined,
+      w0: st.w0Mode === 'direkt' ? v.w0 : undefined,
+    });
+    const e = await createFromTransfer(seriesId, calcToExperiment(st, d));
+    navigate(`/logbuch/v/${e.id}`);
+  };
   const remove = async () => {
     if (!window.confirm(`Reihe „${series.code}“ mit ${experiments.length} Versuchen löschen?`)) return;
     await removeSeriesCascade(seriesId);
@@ -97,6 +113,12 @@ export function SeriesDetail() {
           <button type="button" className="btn" disabled={!last} onClick={() => void addDup()}>
             {last ? `Duplizieren aus ${last.versuchsId}` : 'Duplizieren (noch kein Versuch)'}
           </button>
+          <button type="button" className="btn" onClick={() => void addFromCalc()}>
+            Aus Rechner
+          </button>
+          <Link to={`/logbuch/r/${seriesId}/matrix`} className="btn">
+            Matrix erzeugen …
+          </Link>
         </div>
         {sorted.length > 0 ? (
           <div className="mt">

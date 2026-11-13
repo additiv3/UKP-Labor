@@ -42,6 +42,15 @@ export function createRepo<T extends Base>(table: Table<T, string>) {
       return rec;
     },
 
+    /** Mehrere Datensätze in einer Transaktion anlegen. */
+    async createMany(items: NewEntity<T>[]): Promise<T[]> {
+      const ts = nowIso();
+      const deviceId = await getDeviceId();
+      const recs = items.map((data) => ({ ...data, id: uuid(), createdAt: ts, updatedAt: ts, deviceId }) as unknown as T);
+      await table.bulkAdd(recs);
+      return recs;
+    },
+
     async update(id: string, changes: Partial<Omit<T, BaseFields>>): Promise<T> {
       const deviceId = await getDeviceId();
       return table.db.transaction('rw', table, async () => {

@@ -3,7 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { componentsRepo } from '../../data/repos';
 import { checkLimits, type LimitField } from '../../core/limits';
 import { PresetPanel } from './PresetPanel';
-import { asLaser, asScanner } from './presets';
+import { TransferPanel } from './TransferPanel';
+import { asLaser, asOptik, asScanner } from './presets';
 import { derive } from '../../core/physics/derive';
 import { pulseEnergyForFluence, transmissionForTarget } from '../../core/physics/fluence';
 import { FORMULAS } from '../../core/physics/formulas';
@@ -33,6 +34,7 @@ export function CalculatorScreen() {
   );
   const laser = asLaser(components?.find((c) => c.id === s.preset.laserId));
   const scanner = asScanner(components?.find((c) => c.id === s.preset.scannerId));
+  const optik = asOptik(components?.find((c) => c.id === s.preset.optikId));
 
   const field = (k: CalcField, extra: { warn?: string; hint?: string; allowNegative?: boolean; placeholder?: string } = {}) => {
     const def = CALC_FIELDS[k];
@@ -337,6 +339,8 @@ export function CalculatorScreen() {
                 <p className="muted">Für die Kaustik Wellenlänge und Fokusradius (bzw. Brennweite und w_L) eingeben.</p>
               ))}
           </section>
+
+          <TransferPanel state={s} derived={d} optikW0Datenblatt={optik?.w0Datenblatt} />
         </div>
       </div>
     </div>

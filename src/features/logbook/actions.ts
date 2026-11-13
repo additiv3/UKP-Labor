@@ -54,3 +54,49 @@ export async function nextSeriesCode(): Promise<string> {
   }
   return `B${max + 1}`;
 }
+
+/** Neuer Versuch aus Rechnerwerten (Status „geplant“). */
+export async function createFromTransfer(
+  seriesId: string,
+  t: Pick<Experiment, 'systemId' | 'laserId' | 'optikId' | 'scannerId' | 'materialId' | 'params'>,
+): Promise<Experiment> {
+  const series = await seriesRepo.get(seriesId);
+  if (!series) throw new Error('Reihe nicht gefunden');
+  const ids = await experimentsRepo.allVersuchsIds();
+  return experimentsRepo.create({
+    versuchsId: nextVersuchsId(ids, series.code, await materialKurz(t.materialId)),
+    seriesId,
+    datum: todayIso(),
+    systemId: t.systemId,
+    laserId: t.laserId,
+    optikId: t.optikId,
+    scannerId: t.scannerId,
+    materialId: t.materialId,
+    params: t.params,
+    abgeleitet: experimentSnapshot(t.params),
+    tags: [],
+    status: 'geplant',
+  });
+}
+
+/** Rechnerwerte in einen bestehenden Versuch übernehmen (nur angegebene Werte überschreiben). */
+export async function applyTransfer(
+  experimentId: string,
+  t: Pick<Experiment, 'systemId' | 'laserId' | 'optikId' | 'scannerId' | 'materialId' | 'params'>,
+  merge: (a: Experiment['params'], b: Experiment['params']) => Experiment['params'],
+): Promise<Experiment> {
+  const cur = await experimentsRepo.get(experimentId);
+  if (!cur) throw new Error('Versuch nicht gefunden');
+  const params = merge(cur.params, t.params);
+  return experimentsRepo.update(experimentId, {
+    params,
+    abgeleitet: experimentSnapshot(params),
+    systemId: t.systemId ?? cur.systemId,
+    laserId: t.systemId ? t.laserId : cur.laserId,
+    optikId: t.systemId ? t.optikId : cur.optikId,
+    scannerId: t.systemId ? t.scannerId : cur.scannerId,
+    materialId: t.materialId ?? cur.materialId,
+  });
+}
+
+export { materialKurz };

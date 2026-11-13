@@ -119,7 +119,8 @@ export function NumberListField(
   return (
     <div className={`field${invalid ? ' is-warn' : ''}`}>
       <label htmlFor={id}>
-        {p.label} <span className="muted">[{unit.id}]</span>
+        {p.label}
+        {unit.id && <span className="muted"> [{unit.id}]</span>}
       </label>
       <input
         id={id}

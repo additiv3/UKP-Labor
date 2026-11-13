@@ -9,7 +9,7 @@ Status: ☐ offen · ◐ in Arbeit · ☑ fertig. Nach jedem Meilenstein aktuali
 | 0.3 | Anlagen & Komponenten, Werkstoffe (Seed), Literaturwerte, Proben; Presets im Rechner + Grenzwertwarnungen | ☑ |
 | 0.4 | Logbuch: Reihen, Versuche, Duplizieren, ID-Generator, abgeleitete Werte + Snapshot, Filter/Suche | ☑ |
 | 0.5 | Export JSON/CSV, Import mit Merge-Vorschau, Backup-Erinnerung, Hauptlogbuch (File System Access) | ☑ |
-| 0.6 | Matrix-Generator, „Aus Rechner übernehmen“ | ☐ |
+| 0.6 | Matrix-Generator, „Aus Rechner übernehmen“ | ☑ |
 | 0.7 | Notizen/Tagebuch mit Markdown/KaTeX, Verlinkung, Formelsammlung | ☐ |
 | 0.8 | D²-Fit und Inkubationsfit im Rechner (Rechenkern + Tests bereits in 0.2) | ◐ |
 | später | Android-Test, weitere Rechner (Wärmeakkumulation, Burst), Druckansicht Versuch | ☐ |
@@ -86,6 +86,16 @@ Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entsteh
 - Getestet: Rundreise Export → Reset → Import ergibt identische Daten; zwei Geräte konvergieren; Hauptlogbuch mit
   nachgebautem Ordner; im Browser zwei getrennte Profile (Laptop/iPhone) mit Konflikt.
 
+## Stand 0.6 (umgesetzt)
+- **Matrix-Generator** (Reihe → „Matrix erzeugen …“, `src/core/matrix.ts`, getestet): Vorlage aus der Reihe (oder leer),
+  1–3 Achsen aus E_p, P_avg, T, f_rep, N, Überfahrten, v, Δx, h, Fokuslage, τ. Werte als Liste oder per Bereich
+  (von/bis/Anzahl, linear oder logarithmisch). Vorschau mit IDs, Achsenwerten und F₀; „N Versuche anlegen“ schreibt alle
+  in einer Transaktion. Erste Achse = äußere Schleife (B1-Si-002: E_p₁/N₁, -003: E_p₁/N₂ …).
+- **„In Versuch übernehmen“** im Rechner: Reihe wählen, Ziel „Neuer Versuch (geplant)“ oder bestehender Versuch.
+  Übernimmt λ, τ, Leistung bzw. E_p (wie eingegeben), f_rep, T, M², w₀ mit Quelle, Fokuslage, v, h, N sowie Anlage,
+  Komponenten und Werkstoff der Vorlagen.
+- **„Aus Rechner“** in der Reihe: neuer Versuch aus dem zuletzt im Rechner eingestellten Stand.
+
 ## Entscheidungen
 - **Paketversionen:** TypeScript bleibt auf 6.0.x, weil typescript-eslint TypeScript 7 noch nicht unterstützt.
 - **Pages-Workflow nur im öffentlichen Repo:** `pages.yml` liegt auch im privaten Repo (damit der Code-Stand identisch ist),
@@ -145,3 +155,12 @@ Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entsteh
 - **Hauptlogbuch nur per Abgleich:** Es gibt bewusst kein „nur speichern“, damit die Datei nie Änderungen anderer Geräte
   überschreibt.
 - **Einstellungen werden nicht exportiert** (gerätespezifisch).
+- **Matrix-Versuche** haben Status „geplant“, das gewählte Datum und den Tag „matrix“; Obergrenze 500 Versuche.
+  E_p und P_avg dürfen nicht gleichzeitig variiert werden (über f_rep gekoppelt). Variiert E_p, entfällt die eingegebene
+  Leistung der Vorlage (und umgekehrt); variiert v, entfällt ein fester Pulsabstand der Vorlage.
+- **Übernahme in bestehenden Versuch** überschreibt nur Felder, die im Rechner angegeben sind (Bemerkung, Tags, Strategie
+  bleiben). Die gekoppelte Größe (E_p bzw. P_avg) und ein fester Pulsabstand werden entfernt, damit nichts widersprüchlich
+  bleibt. Vorher gibt es eine Rückfrage.
+- **Materialwerte (F_th, δ, S)** gehen nicht in den Versuch (gehören zum Werkstoff, nicht zu den eingestellten Parametern).
+- **w₀ aus dem Rechner:** „aus Optik“ → Quelle „berechnet“; „w₀ direkt“ → Quelle „Datenblatt“, wenn der Wert dem
+  Datenblatt der gewählten Optik entspricht, sonst ohne Quelle.

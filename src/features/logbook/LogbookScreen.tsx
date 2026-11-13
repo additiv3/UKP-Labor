@@ -8,6 +8,7 @@ import { nextSeriesCode } from './actions';
 import { SeriesDetail } from './SeriesDetail';
 import { ExperimentDetail } from './ExperimentDetail';
 import { AllExperiments } from './AllExperiments';
+import { MatrixScreen } from './MatrixScreen';
 
 function SeriesList() {
   const series = useLiveQuery(() => seriesRepo.listSorted(), []);
@@ -74,6 +75,7 @@ export function LogbookScreen() {
         <Routes>
           <Route index element={<p className="muted md-placeholder">Versuchsreihe auswählen oder anlegen.</p>} />
           <Route path="r/:seriesId" element={<SeriesDetail />} />
+          <Route path="r/:seriesId/matrix" element={<MatrixScreen />} />
           <Route path="v/:experimentId" element={<ExperimentDetail />} />
           <Route path="alle" element={<AllExperiments />} />
         </Routes>

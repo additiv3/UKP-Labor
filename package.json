@@ -1,7 +1,7 @@
 {
   "name": "ukp-labor",
   "private": true,
-  "version": "0.5.0",
+  "version": "0.6.0",
   "type": "module",
   "description": "Persönliches Laborbuch, Parameter-Rechner und Nachschlagewerk für die UKP-Laserablation (PWA, offline).",
   "scripts": {
