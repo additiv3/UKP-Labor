@@ -1,0 +1,33 @@
+/** LaTeX-Darstellung der Formeln aus docs/04_formeln.md (für „ⓘ Formel“ und die Formelsammlung). */
+export const FORMULAS = {
+  ePuls: String.raw`E_p = \frac{P_{avg}}{f_{rep}}`,
+  pAvg: String.raw`P_{avg} = E_p \, f_{rep}`,
+  transmission: String.raw`E_{p,\text{W}} = T \cdot E_{p,\text{Q}}\quad(\text{W: Werkstück, Q: Quelle})`,
+  pPk: String.raw`P_{pk} = 2\sqrt{\tfrac{\ln 2}{\pi}}\,\frac{E_p}{\tau} \approx 0{,}9394\,\frac{E_p}{\tau}\quad(\text{sech}^2\!: 0{,}8814)`,
+  w0: String.raw`w_0 = \frac{M^2 \lambda f}{\pi w_L}`,
+  zR: String.raw`z_R = \frac{\pi w_0^2}{M^2 \lambda}`,
+  dof: String.raw`\text{DOF} = 2 z_R`,
+  wz: String.raw`w(z) = w_0\sqrt{1+\left(\tfrac{z}{z_R}\right)^2}`,
+  F0: String.raw`F_0 = \frac{2E_p}{\pi w_0^2}`,
+  Fmean: String.raw`\bar F = \frac{E_p}{\pi w_0^2} = \frac{F_0}{2}`,
+  F0z: String.raw`F_0(z) = \frac{2E_p}{\pi w(z)^2}`,
+  I0: String.raw`I_0 = \frac{2P_{pk}}{\pi w_0^2}`,
+  dx: String.raw`\Delta x = \frac{v}{f_{rep}}`,
+  OL: String.raw`OL = 1 - \frac{\Delta x}{2w_0}`,
+  N1D: String.raw`N_{1D} = \frac{2w_0}{\Delta x}`,
+  N2D: String.raw`N_{2D} = \frac{\pi w_0^2}{\Delta x\, h}`,
+  OLh: String.raw`OL_h = 1 - \frac{h}{2w_0}`,
+  tFlaeche: String.raw`t = \frac{N_{layer}\, A}{v\, h}`,
+  D: String.raw`D = 2 w_0\sqrt{\tfrac12\ln\frac{F_0}{F_{th}}}`,
+  zAbl: String.raw`z_{abl} = \delta\ln\frac{F_0}{F_{th}}`,
+  Vp: String.raw`V_p = \frac{\pi w_0^2\delta}{4}\ln^2\frac{F_0}{F_{th}}`,
+  VdotP: String.raw`\frac{\dot V}{P} = \frac{\delta}{2F_0}\ln^2\frac{F_0}{F_{th}}`,
+  F0opt: String.raw`F_{0,opt} = e^2 F_{th}`,
+  VdotPmax: String.raw`\left(\frac{\dot V}{P}\right)_{max} = \frac{2\delta}{e^2 F_{th}}`,
+  EpOpt: String.raw`E_{p,opt} = \frac{F_{0,opt}\,\pi w_0^2}{2}`,
+  Topt: String.raw`T = \frac{E_{ziel}}{E_{max}}`,
+  EpZiel: String.raw`E_{p,ziel} = \frac{F_{ziel}\,\pi w(z)^2}{2}`,
+  fthEff: String.raw`F_{th}(N) = F_{th}(1)\, N^{S-1}`,
+} as const;
+
+export type FormulaKey = keyof typeof FORMULAS;

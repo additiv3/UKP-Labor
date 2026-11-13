@@ -1,4 +1,24 @@
-.DS_Store
-Thumbs.db
+# Abhängigkeiten und Build
 node_modules/
 dist/
+dev-dist/
+coverage/
+*.local
+
+# Logs
+npm-debug.log*
+*.log
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude lokal
+.claude/settings.local.json
+
+# Niemals Nutzerdaten einchecken
+*_ukp-labor_*.json
+logbuch.json
+logbuch.csv
