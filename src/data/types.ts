@@ -277,6 +277,8 @@ export interface SettingsMap {
   calculator: unknown;
   /** Ordner des Hauptlogbuchs (FileSystemDirectoryHandle, nur Chrome/Edge am Laptop) */
   masterDir: unknown;
+  /** Eingaben der Auswertehilfen (D²-Fit, Inkubation), siehe features/calculator/fits */
+  fits: unknown;
   /** Letzter Abgleich mit dem Hauptlogbuch (ISO) */
   lastMasterSyncAt: string | undefined;
 }

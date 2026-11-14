@@ -1,5 +1,6 @@
 import type { PulseProfile } from '../../core/physics/fluence';
 import type { Quantity } from '../../core/physics/units';
+import type { W0Quelle } from '../../data/types';
 
 /** Eingabefelder des Rechners (Werte in SI). */
 export const CALC_FIELDS = {
@@ -34,6 +35,8 @@ export interface CalcState {
   energyMode: 'pAvg' | 'ePuls';
   /** Fokusradius aus Optik berechnen oder direkt eingeben */
   w0Mode: 'optik' | 'direkt';
+  /** Herkunft des direkt eingegebenen w₀ (z. B. „d2“ nach Übernahme aus dem D²-Fit); manuelle Änderung löscht sie */
+  w0Quelle?: W0Quelle;
   profile: PulseProfile;
   showFluence: boolean;
   /** Gewählte Vorlagen (IDs aus Anlagen/Material) */
@@ -83,6 +86,7 @@ export function normalizeCalcState(raw: unknown): CalcState {
     u,
     energyMode: r.energyMode === 'ePuls' ? 'ePuls' : 'pAvg',
     w0Mode: r.w0Mode === 'direkt' ? 'direkt' : 'optik',
+    w0Quelle: (['datenblatt', 'berechnet', 'd2', 'geschaetzt'] as const).find((q) => q === r.w0Quelle),
     profile: r.profile === 'sech2' ? 'sech2' : 'gauss',
     showFluence: r.showFluence === true,
     preset: normalizePreset(r.preset),

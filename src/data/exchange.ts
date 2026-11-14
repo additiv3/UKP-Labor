@@ -67,6 +67,6 @@ export async function resetAllData(): Promise<void> {
   await db.transaction('rw', [...SYNC_TABLES.map(table), db.settings], async () => {
     for (const t of SYNC_TABLES) await table(t).clear();
     await db.materials.bulkAdd(seedMaterials());
-    for (const k of ['calculator', 'defaultSystemId', 'lastExportAt', 'masterDir', 'lastMasterSyncAt']) await db.settings.delete(k);
+    for (const k of ['calculator', 'fits', 'defaultSystemId', 'lastExportAt', 'masterDir', 'lastMasterSyncAt']) await db.settings.delete(k);
   });
 }

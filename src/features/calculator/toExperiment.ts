@@ -28,7 +28,8 @@ export function calcToExperiment(s: CalcState, d: Derived, optikW0Datenblatt?: n
   else p.ePuls = v.ePuls;
   if (s.w0Mode === 'direkt') {
     p.w0 = v.w0;
-    if (v.w0 !== undefined && optikW0Datenblatt !== undefined && Math.abs(v.w0 - optikW0Datenblatt) <= 1e-9 * optikW0Datenblatt)
+    if (v.w0 !== undefined && s.w0Quelle) p.w0Quelle = s.w0Quelle;
+    else if (v.w0 !== undefined && optikW0Datenblatt !== undefined && Math.abs(v.w0 - optikW0Datenblatt) <= 1e-9 * optikW0Datenblatt)
       p.w0Quelle = 'datenblatt';
   } else if (d.w0 !== undefined) {
     p.w0 = d.w0;

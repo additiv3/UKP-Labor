@@ -18,7 +18,7 @@ export const router = createHashRouter([
       {
         path: 'rechner/*',
         // KaTeX + uPlot nur bei Bedarf laden (Service Worker cacht trotzdem alles für offline).
-        lazy: () => import('./features/calculator/CalculatorScreen').then((m) => ({ Component: m.CalculatorScreen })),
+        lazy: () => import('./features/calculator/CalculatorRoot').then((m) => ({ Component: m.CalculatorRoot })),
       },
       { path: 'anlagen/*', element: <EquipmentScreen /> },
       { path: 'material/*', element: <MaterialsScreen /> },

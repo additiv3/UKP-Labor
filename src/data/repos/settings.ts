@@ -10,6 +10,7 @@ export const SETTING_DEFAULTS: Omit<SettingsMap, 'deviceId'> = {
   units: {},
   calculator: undefined,
   masterDir: undefined,
+  fits: undefined,
   lastMasterSyncAt: undefined,
 };
 

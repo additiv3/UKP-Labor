@@ -25,7 +25,7 @@ export function CalculatorScreen() {
   const themeVersion = useThemeVersion();
 
   const set = (k: CalcField) => (x: number | undefined) =>
-    update((st) => ({ ...st, v: { ...st.v, [k]: x } }));
+    update((st) => ({ ...st, v: { ...st.v, [k]: x }, ...(k === 'w0' ? { w0Quelle: undefined } : {}) }));
   const setUnit = (k: CalcField) => (u: string) => update((st) => ({ ...st, u: { ...st.u, [k]: u } }));
 
   const components = useLiveQuery(
@@ -211,7 +211,7 @@ export function CalculatorScreen() {
             <h2>Strahl &amp; Fluenz</h2>
             <div className="tiles">
               <ResultTile
-                label={d.w0Berechnet ? 'Fokusradius w₀ (berechnet)' : 'Fokusradius w₀'}
+                label={d.w0Berechnet ? 'Fokusradius w₀ (berechnet)' : s.w0Quelle === 'd2' ? 'Fokusradius w₀ (D²-Fit)' : 'Fokusradius w₀'}
                 value={formatSI(d.w0, 'm')}
                 tex={d.w0Berechnet ? FORMULAS.w0 : undefined}
                 sub={d.w0 !== undefined ? `Ø ${formatSI(2 * d.w0, 'm')}` : undefined}

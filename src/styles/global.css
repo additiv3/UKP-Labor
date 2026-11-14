@@ -1119,3 +1119,32 @@ input[type='date'] {
 .formula-tex {
   overflow-x: auto;
 }
+
+/* ---------------------------------------------------------------- Rechner-Unterseiten */
+
+.subnav {
+  display: flex;
+  gap: 0.25rem;
+  margin: -0.25rem 0 1rem;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+.subnav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch);
+  padding: 0 0.9rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+.subnav a.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.pairs-text {
+  width: 100%;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 15px;
+}

@@ -11,7 +11,7 @@ Status: ☐ offen · ◐ in Arbeit · ☑ fertig. Nach jedem Meilenstein aktuali
 | 0.5 | Export JSON/CSV, Import mit Merge-Vorschau, Backup-Erinnerung, Hauptlogbuch (File System Access) | ☑ |
 | 0.6 | Matrix-Generator, „Aus Rechner übernehmen“ | ☑ |
 | 0.7 | Notizen/Tagebuch mit Markdown/KaTeX, Verlinkung, Formelsammlung | ☑ |
-| 0.8 | D²-Fit und Inkubationsfit im Rechner (Rechenkern + Tests bereits in 0.2) | ◐ |
+| 0.8 | D²-Fit und Inkubationsfit im Rechner | ☑ |
 | später | Android-Test, weitere Rechner (Wärmeakkumulation, Burst), Druckansicht Versuch | ☐ |
 
 Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entstehen.
@@ -109,6 +109,20 @@ Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entsteh
 - **Formelsammlung** (Notizen → Formelsammlung) aus `formulaCatalog.ts`, dieselben LaTeX-Ausdrücke wie im Rechner;
   Test prüft, dass jede Formel fehlerfrei mit KaTeX gerendert wird.
 
+## Stand 0.8 (umgesetzt)
+- **Rechner mit Unterseiten:** Parameter · D²-Fit · Inkubation (`/rechner`, `/rechner/d2`, `/rechner/inkubation`).
+- **D²-Fit (Liu):** Wertepaare (E_p, D) als Text, eine Zeile pro Krater, getrennt durch Tab, „;“ oder Leerzeichen (direkt
+  aus Excel einfügbar, Kopfzeile wird übersprungen, Einheiten wählbar). Ergebnis w₀, E_th, F_th, R², Anzahl Punkte;
+  Plot D² gegen ln E_p mit Ausgleichsgerade bis zur Schwelle. Punkte mit D = 0 werden ausgeschlossen und gezählt.
+  „w₀ in Rechner“ (Quelle „D²-gemessen“, gelangt so auch in Versuche), „F_th in Rechner“, „Als Literaturwert speichern“.
+- **Inkubationsfit:** Paare (N, F_th) → F_th(1), S, R²; Plot ln F_th gegen ln N; Übernahme in den Rechner und Speichern
+  von F_th(1) (N = 1) und S als Literaturwerte.
+- Eingaben der Fits bleiben beim Tab-Wechsel und über Neustarts erhalten; „Beispieldaten“ erzeugt Krater aus den
+  Referenzwerten (w₀ = 13,114 µm, F_th = 0,2 J/cm² bzw. S = 0,8) zum Ausprobieren.
+- Einlesen der Wertepaare und Plotdaten in `src/core/pairs.ts` (getestet).
+
+**Alle geplanten Versionen 0.1–0.8 sind umgesetzt.** Offen sind die Punkte unter „später“.
+
 ## Entscheidungen
 - **Paketversionen:** TypeScript bleibt auf 6.0.x, weil typescript-eslint TypeScript 7 noch nicht unterstützt.
 - **Pages-Workflow nur im öffentlichen Repo:** `pages.yml` liegt auch im privaten Repo (damit der Code-Stand identisch ist),
@@ -185,3 +199,9 @@ Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entsteh
 - **Verweise über die Versuchs-ID bzw. den Reihen-Code** (nicht die UUID), damit sie lesbar und tippbar sind. Wird eine
   Versuchs-ID später geändert, zeigt der alte Verweis „nicht gefunden“.
 - **Wochentag/Datum** im Tagebuch statt Pflicht-Titel: Ein Tagebucheintrag braucht keinen Titel.
+- **Fit-Eingabe als Text statt Tabelle:** Am Laptop direkt aus Excel einfügbar, am Handy schnell zeilenweise tippbar.
+- **Literaturwert aus eigener Messung:** Citekey bleibt Pflicht (Vorschlag „eigen-<Reihe>“); Methode („D² (Liu)“ bzw.
+  „Inkubationsfit“), w₀/E_th bzw. S, R² und n stehen in der Notiz; λ und τ werden aus dem Rechner übernommen.
+- **Herkunft von w₀ im Rechner:** Nach „w₀ in Rechner“ merkt sich der Rechner die Quelle „d2“; eine manuelle Änderung von
+  w₀ löscht sie wieder.
+- **Warnungen:** D²-Fit mit weniger als 4 Punkten oder R² < 0,95; Inkubation mit S > 1,05 (Schwelle steigt mit N).

@@ -27,6 +27,10 @@ describe('Rechner → Versuch', () => {
     expect(t.params).toEqual({ ePuls: 50e-6, w0: 15e-6, w0Quelle: 'datenblatt', fokuslage: -100e-6 });
     expect(calcToExperiment(s, derive({}), 20e-6).params.w0Quelle).toBeUndefined();
   });
+  it('w0 aus D²-Fit behält Quelle d2', () => {
+    const s = state({ w0Mode: 'direkt', w0Quelle: 'd2', v: { w0: 14e-6 } });
+    expect(calcToExperiment(s, derive({}), 14e-6).params).toEqual({ w0: 14e-6, w0Quelle: 'd2' });
+  });
   it('ohne Anlage keine Komponenten', () => {
     const t = calcToExperiment(state({ preset: { laserId: 'l' } }), derive({}));
     expect(t.laserId).toBeUndefined();
