@@ -933,6 +933,25 @@ input[type='date'] {
   font-weight: 500;
   font-size: 0.8rem;
 }
+.report tr.row-current > * {
+  background: var(--surface-2);
+  font-weight: 600;
+}
+.kv {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0;
+  font-size: 0.9rem;
+}
+.kv dt {
+  color: var(--text-muted);
+}
+.kv dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 .backup-banner {
   display: flex;
   align-items: center;
@@ -1147,4 +1166,153 @@ input[type='date'] {
   width: 100%;
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   font-size: 15px;
+}
+
+/* ---------------------------------------------------------------- Druckansicht */
+
+.print-page {
+  min-height: 100dvh;
+  padding: calc(env(safe-area-inset-top) + 0.75rem) max(1rem, env(safe-area-inset-right)) 1.5rem
+    max(1rem, env(safe-area-inset-left));
+}
+.print-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  max-width: 210mm;
+  margin: 0 auto 0.75rem;
+}
+/* Papier: immer hell, unabhängig vom Theme */
+.paper {
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 1.25rem;
+  background: #fff;
+  color: #111;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+.paper h1 {
+  margin: 0.1rem 0 0.75rem;
+  font-size: 1.4rem;
+}
+.paper h2 {
+  margin: 1.1rem 0 0.35rem;
+  font-size: 1rem;
+  border-bottom: 1px solid #999;
+  padding-bottom: 0.15rem;
+}
+.paper-muted {
+  color: #555;
+  font-size: 0.8rem;
+}
+.paper-text {
+  white-space: pre-wrap;
+  margin: 0;
+}
+.paper-kv {
+  border-collapse: collapse;
+  width: 100%;
+}
+.paper-kv th,
+.paper-kv td {
+  padding: 0.18rem 0.4rem 0.18rem 0;
+  border-bottom: 1px solid #e3e3e3;
+  vertical-align: top;
+  text-align: left;
+}
+.paper-kv th {
+  font-weight: 500;
+  color: #444;
+  width: 45%;
+}
+.paper-kv td {
+  font-variant-numeric: tabular-nums;
+}
+.paper-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+}
+.paper-table th,
+.paper-table td {
+  border: 1px solid #ccc;
+  padding: 0.15rem 0.3rem;
+  text-align: left;
+  vertical-align: top;
+}
+.paper-table thead th {
+  background: #f0f0f0;
+  font-weight: 600;
+}
+.paper-table .num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.paper-note {
+  min-width: 8em;
+  white-space: pre-wrap;
+}
+.paper-foot {
+  margin-top: 1.25rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid #ccc;
+  color: #666;
+  font-size: 0.75rem;
+}
+/* am Handy: Reihentabelle horizontal scrollbar statt Seitenbreite zu sprengen */
+@media screen and (max-width: 700px) {
+  .paper {
+    overflow-x: auto;
+    padding: 1rem;
+  }
+}
+
+@page {
+  size: A4;
+  margin: 12mm;
+}
+@media print {
+  html,
+  body {
+    background: #fff !important;
+  }
+  .print-toolbar,
+  .toast {
+    display: none !important;
+  }
+  .print-page {
+    padding: 0;
+    min-height: 0;
+  }
+  .paper {
+    max-width: none;
+    padding: 0;
+    border-radius: 0;
+    overflow: visible;
+  }
+  .paper-table tr,
+  .paper-kv tr {
+    break-inside: avoid;
+  }
+  .paper h2 {
+    break-after: avoid;
+  }
+  .paper-table {
+    font-size: 7pt;
+  }
+  .paper-table .num {
+    white-space: normal;
+  }
+  /* Reihe im Querformat (wo unterstützt, z. B. Chrome/Edge) */
+  .paper-series {
+    page: querformat;
+  }
+}
+@page querformat {
+  size: A4 landscape;
+  margin: 10mm;
 }

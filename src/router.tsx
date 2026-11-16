@@ -6,8 +6,11 @@ import { MaterialsScreen } from './features/materials/MaterialsScreen';
 import { NotesScreen } from './features/notes/NotesScreen';
 import { SettingsScreen } from './features/settings/SettingsScreen';
 import { RouteError } from './components/RouteError';
+import { PrintRoot } from './features/print/PrintScreens';
 
 export const router = createHashRouter([
+  // Druckansichten ohne Navigation (eigenes, helles Layout)
+  { path: '/druck/*', element: <PrintRoot />, errorElement: <RouteError /> },
   {
     path: '/',
     element: <Layout />,

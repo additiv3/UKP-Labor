@@ -36,7 +36,9 @@ Inklusive Tombstones (`deleted: true`). Validierung beim Import mit zod; bei Feh
 ## CSV-Export (Versuche, flach)
 - Eine Zeile pro Versuch, Trennzeichen `;`, UTF-8 mit BOM (Excel-kompatibel), Dezimalpunkt.
 - Spalten mit Einheit im Kopf, angezeigt in Labor-Einheiten:
-  `versuchsId;datum;reihe;material;probe;anlage;laser;optik;lambda_nm;tau_fs;pAvg_W;ePuls_uJ;fRep_kHz;transmission;w0_um;w0Quelle;fokuslage_um;v_mm_s;pulsabstand_um;hatch_um;nPulse;ueberfahrten;F0_J_cm2;OL;N2D;strategie;atmosphaere;tags;status;bemerkung;id;updatedAt`
+  `versuchsId;datum;reihe;material;probe;anlage;laser;optik;lambda_nm;tau_fs;pAvg_W;ePuls_uJ;fRep_kHz;transmission;w0_um;w0Quelle;fokuslage_um;v_mm_s;pulsabstand_um;hatch_um;nPulse;ueberfahrten;F0_J_cm2;OL;N2D;burstN;fBurst_MHz;F0Sub_J_cm2;strategie;atmosphaere;tags;status;bemerkung;id;updatedAt`
+- Burst-Spalten (ab 0.9): `burstN` = Sub-Pulse pro Burst (nur bei n ≥ 2), `fBurst_MHz` = Intra-Burst-Frequenz,
+  `F0Sub_J_cm2` = Spitzenfluenz pro Sub-Puls im Fokus (Snapshot). Bei Burst gelten `pAvg_W`/`ePuls_uJ` pro Burst.
 - Gedacht für Python (pandas) und Excel. Nur lesen, kein CSV-Import.
 
 ## Dateinamen

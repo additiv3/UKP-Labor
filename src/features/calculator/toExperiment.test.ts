@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { derive } from '../../core/physics/derive';
 import { calcToExperiment, mergeIntoParams } from './toExperiment';
-import { INITIAL_CALC_STATE, type CalcState } from './state';
+import { INITIAL_CALC_STATE, calcDeriveInput, type CalcState } from './state';
 
 const state = (o: Partial<CalcState> = {}): CalcState => ({
   ...INITIAL_CALC_STATE,
@@ -41,5 +41,13 @@ describe('Rechner → Versuch', () => {
       { pAvg: 5, v: 2, w0: 2e-5 },
     );
     expect(merged).toEqual({ pAvg: 5, fRep: 100e3, strategie: 'Linien', v: 2, w0: 2e-5 });
+  });
+  it('Burst wird übernommen, Burst-Info des Versuchs bleibt', () => {
+    const s = state({ v: { pAvg: 10, fRep: 200e3, burstN: 4, fBurst: 40e6 } });
+    const t = calcToExperiment(s, derive(calcDeriveInput(s)));
+    expect(t.params.burst).toEqual({ anzahl: 4, freq: 40e6 });
+    expect(mergeIntoParams({ burst: { anzahl: 2, info: 'GHz-Burst' } }, t.params).burst).toEqual({ anzahl: 4, freq: 40e6, info: 'GHz-Burst' });
+    const ohne = state({ v: { pAvg: 10, fRep: 200e3, burstN: 1 } });
+    expect(calcToExperiment(ohne, derive(calcDeriveInput(ohne))).params.burst).toBeUndefined();
   });
 });

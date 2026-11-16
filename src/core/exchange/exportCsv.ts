@@ -9,7 +9,7 @@ import type { ExportData } from './schema';
 export const CSV_COLUMNS = [
   'versuchsId', 'datum', 'reihe', 'material', 'probe', 'anlage', 'laser', 'optik',
   'lambda_nm', 'tau_fs', 'pAvg_W', 'ePuls_uJ', 'fRep_kHz', 'transmission', 'w0_um', 'w0Quelle', 'fokuslage_um',
-  'v_mm_s', 'pulsabstand_um', 'hatch_um', 'nPulse', 'ueberfahrten', 'F0_J_cm2', 'OL', 'N2D',
+  'v_mm_s', 'pulsabstand_um', 'hatch_um', 'nPulse', 'ueberfahrten', 'F0_J_cm2', 'OL', 'N2D', 'burstN', 'fBurst_MHz', 'F0Sub_J_cm2',
   'strategie', 'atmosphaere', 'tags', 'status', 'bemerkung', 'id', 'updatedAt',
 ] as const;
 
@@ -63,6 +63,9 @@ function row(e: Experiment, d: ExportData): string[] {
     csvNumber(w.F0, 1e-4),
     csvNumber(w.OL),
     csvNumber(w.N2D),
+    csvNumber(w.nBurst),
+    csvNumber(p.burst?.freq, 1e-6),
+    csvNumber(w.F0Sub, 1e-4),
     p.strategie ?? '',
     p.atmosphaere ?? '',
     e.tags.join(','),

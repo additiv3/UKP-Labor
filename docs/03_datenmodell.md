@@ -50,7 +50,7 @@ Zahlenwerte in SI. Optionale Felder sind `undefined`, wenn nicht angegeben.
   params: {
     lambda?: number; tau?: number;
     pAvg?: number; ePuls?: number; fRep?: number;
-    burst?: { anzahl?: number; freq?: number; info?: string };
+    burst?: { anzahl?: number; freq?: number; info?: string };  // ab anzahl ≥ 2: pAvg/ePuls gelten pro Burst
     transmission?: number;     // Abschwächung 0..1
     w0?: number; w0Quelle?: 'datenblatt' | 'berechnet' | 'd2' | 'geschaetzt';
     m2?: number; fokuslage?: number;  // z relativ zur Oberfläche, + = über der Oberfläche

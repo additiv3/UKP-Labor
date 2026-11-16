@@ -1,3 +1,4 @@
+import type { DeriveInput } from '../../core/physics/derive';
 import type { PulseProfile } from '../../core/physics/fluence';
 import type { Quantity } from '../../core/physics/units';
 import type { W0Quelle } from '../../data/types';
@@ -9,6 +10,8 @@ export const CALC_FIELDS = {
   pAvg: { quantity: 'power', label: 'Mittlere Leistung', symbol: 'P_avg' },
   ePuls: { quantity: 'energy', label: 'Pulsenergie', symbol: 'E_p' },
   fRep: { quantity: 'frequency', label: 'Repetitionsrate', symbol: 'f_rep' },
+  burstN: { quantity: 'none', label: 'Sub-Pulse pro Burst', symbol: 'n' },
+  fBurst: { quantity: 'frequency', label: 'Intra-Burst-Frequenz', symbol: 'f_burst' },
   transmission: { quantity: 'fraction', label: 'Abschwächung (Transmission)', symbol: 'T' },
   m2: { quantity: 'none', label: 'Strahlqualität', symbol: 'M²' },
   f: { quantity: 'focal', label: 'Brennweite', symbol: 'f' },
@@ -57,6 +60,7 @@ export const DEFAULT_UNITS: Partial<Record<CalcField, string>> = {
   wL: 'mm',
   hatch: 'µm',
   area: 'mm²',
+  fBurst: 'MHz',
 };
 
 export const INITIAL_CALC_STATE: CalcState = {
@@ -68,6 +72,35 @@ export const INITIAL_CALC_STATE: CalcState = {
   showFluence: false,
   preset: {},
 };
+
+/** Rechnerzustand → Eingabe für den Rechenkern (gemeinsam für Parameter- und Burst-Seite). */
+export function calcDeriveInput(s: CalcState): DeriveInput {
+  const v = s.v;
+  return {
+    lambda: v.lambda,
+    tau: v.tau,
+    profile: s.profile,
+    pAvg: s.energyMode === 'pAvg' ? v.pAvg : undefined,
+    ePuls: s.energyMode === 'ePuls' ? v.ePuls : undefined,
+    fRep: v.fRep,
+    burstN: v.burstN,
+    fBurst: v.fBurst,
+    transmission: v.transmission,
+    m2: v.m2,
+    f: v.f,
+    wL: v.wL,
+    w0: s.w0Mode === 'direkt' ? v.w0 : undefined,
+    z: v.z,
+    v: v.v,
+    hatch: v.hatch,
+    fth: v.fth,
+    delta: v.delta,
+    s: v.s,
+    nPulse: v.nPulse,
+    area: v.area,
+    nLayer: v.nLayer,
+  };
+}
 
 /** Robust gegen veraltete/fremde gespeicherte Zustände. */
 export function normalizeCalcState(raw: unknown): CalcState {

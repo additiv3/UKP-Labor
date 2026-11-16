@@ -1,3 +1,4 @@
+import { FORMEL_VERSION } from '../physics/version';
 import { describe, expect, it } from 'vitest';
 import type { Experiment, Material, Series } from '../../data/types';
 import { buildExport, exportFileName, fileSafe, serializeExport } from './exportJson';
@@ -30,7 +31,7 @@ describe('JSON-Export', () => {
     });
     expect(f.app).toBe('ukp-labor');
     expect(f.schemaVersion).toBe(1);
-    expect(f.formelVersion).toBe('1.0');
+    expect(f.formelVersion).toBe(FORMEL_VERSION);
     expect(f.exportedAt).toBe(T1);
     expect(f.data.experiments).toHaveLength(2);
     expect(Object.keys(f.data)).toEqual(['systems', 'components', 'materials', 'litValues', 'samples', 'series', 'experiments', 'notes']);
@@ -172,13 +173,23 @@ describe('CSV-Export', () => {
     const lines = csv.slice(1).split('\r\n');
     expect(lines[0]).toBe(CSV_COLUMNS.join(';'));
     expect(lines[0]).toBe(
-      'versuchsId;datum;reihe;material;probe;anlage;laser;optik;lambda_nm;tau_fs;pAvg_W;ePuls_uJ;fRep_kHz;transmission;w0_um;w0Quelle;fokuslage_um;v_mm_s;pulsabstand_um;hatch_um;nPulse;ueberfahrten;F0_J_cm2;OL;N2D;strategie;atmosphaere;tags;status;bemerkung;id;updatedAt',
+      'versuchsId;datum;reihe;material;probe;anlage;laser;optik;lambda_nm;tau_fs;pAvg_W;ePuls_uJ;fRep_kHz;transmission;w0_um;w0Quelle;fokuslage_um;v_mm_s;pulsabstand_um;hatch_um;nPulse;ueberfahrten;F0_J_cm2;OL;N2D;burstN;fBurst_MHz;F0Sub_J_cm2;strategie;atmosphaere;tags;status;bemerkung;id;updatedAt',
     );
     const body = csv.slice(1 + lines[0]!.length + 2);
     expect(body.startsWith('B1-Si-001;2026-11-01;B1;Silizium;;;;;1030;900;10;50;200;;13.114;;;1000;5;10;;;18.50')).toBe(true);
     expect(body).toContain('"Rand; ""ausgefranst""\nzweite Zeile"');
     expect(body).toContain(';schwelle,si;durchgefuehrt;');
     expect(body).not.toContain(uid(11));
+  });
+  it('Burst-Spalten', () => {
+    const e = exp();
+    const csv = buildCsv(data({ series: [series()], materials: [mat()], experiments: [{ ...e, abgeleitet: undefined, params: { ...e.params, burst: { anzahl: 4, freq: 40e6 } } }] }));
+    const [head, row] = csv.slice(1).split('\r\n');
+    const cols = head!.split(';');
+    const cells = row!.split(';');
+    expect(cells[cols.indexOf('burstN')]).toBe('4');
+    expect(cells[cols.indexOf('fBurst_MHz')]).toBe('40');
+    expect(Number(cells[cols.indexOf('F0Sub_J_cm2')])).toBeCloseTo(4.627, 2);
   });
   it('Zahlen und Felder', () => {
     expect(csvNumber(0.1 + 0.2)).toBe('0.3');

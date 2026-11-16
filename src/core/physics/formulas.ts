@@ -28,6 +28,14 @@ export const FORMULAS = {
   Topt: String.raw`T = \frac{E_{ziel}}{E_{max}}`,
   EpZiel: String.raw`E_{p,ziel} = \frac{F_{ziel}\,\pi w(z)^2}{2}`,
   fthEff: String.raw`F_{th}(N) = F_{th}(1)\, N^{S-1}`,
+  eSub: String.raw`E_{sub} = \frac{E_{burst}}{n}`,
+  dtSub: String.raw`\Delta t = \frac{1}{f_{burst}}`,
+  tBurst: String.raw`t_{burst} = \frac{n-1}{f_{burst}}`,
+  F0Sub: String.raw`F_{0,sub} = \frac{2E_{sub}}{\pi w_0^2} = \frac{F_{0,burst}}{n}`,
+  zAblBurst: String.raw`z_{burst} = n\,\delta\ln\frac{F_{0,sub}}{F_{th}}`,
+  VBurst: String.raw`V_{burst} = n\,\frac{\pi w_0^2\delta}{4}\ln^2\frac{F_{0,sub}}{F_{th}}`,
+  VdotPBurst: String.raw`\frac{\dot V}{P} = \frac{\delta}{2F_{0,sub}}\ln^2\frac{F_{0,sub}}{F_{th}}`,
+  EBurstOpt: String.raw`E_{burst,opt} = n\,\frac{e^2 F_{th}\,\pi w_0^2}{2}`,
 } as const;
 
 export type FormulaKey = keyof typeof FORMULAS;

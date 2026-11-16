@@ -1,7 +1,7 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getSetting } from '../../data/repos/settings';
 import { derive } from '../../core/physics/derive';
-import { normalizeCalcState } from '../calculator/state';
+import { calcDeriveInput, normalizeCalcState } from '../calculator/state';
 import { calcToExperiment } from '../calculator/toExperiment';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { experimentsRepo, removeSeriesCascade, seriesRepo } from '../../data/repos';
@@ -81,13 +81,7 @@ export function SeriesDetail() {
   const addDup = async () => last && navigate(`/logbuch/v/${(await duplicate(last)).id}`);
   const addFromCalc = async () => {
     const st = normalizeCalcState(await getSetting('calculator'));
-    const v = st.v;
-    const d = derive({
-      ...v,
-      pAvg: st.energyMode === 'pAvg' ? v.pAvg : undefined,
-      ePuls: st.energyMode === 'ePuls' ? v.ePuls : undefined,
-      w0: st.w0Mode === 'direkt' ? v.w0 : undefined,
-    });
+    const d = derive(calcDeriveInput(st));
     const e = await createFromTransfer(seriesId, calcToExperiment(st, d));
     navigate(`/logbuch/v/${e.id}`);
   };
@@ -119,6 +113,9 @@ export function SeriesDetail() {
           </button>
           <Link to={`/logbuch/r/${seriesId}/matrix`} className="btn">
             Matrix erzeugen …
+          </Link>
+          <Link to={`/druck/r/${seriesId}`} className="btn">
+            Drucken
           </Link>
         </div>
         {sorted.length > 0 ? (

@@ -12,7 +12,8 @@ Status: ☐ offen · ◐ in Arbeit · ☑ fertig. Nach jedem Meilenstein aktuali
 | 0.6 | Matrix-Generator, „Aus Rechner übernehmen“ | ☑ |
 | 0.7 | Notizen/Tagebuch mit Markdown/KaTeX, Verlinkung, Formelsammlung | ☑ |
 | 0.8 | D²-Fit und Inkubationsfit im Rechner | ☑ |
-| später | Android-Test, weitere Rechner (Wärmeakkumulation, Burst), Druckansicht Versuch | ☐ |
+| 0.9 | Druckansicht Versuch + Reihe, Burst-Rechner, Burst im Snapshot (Formelversion 1.1), Android-Check | ☑ |
+| 0.10 | Wärmeakkumulation: modellfreie Kenngrößen, Werkstofffeld c_p, optional Akkumulationsmodell nach bestätigter Quelle | ☐ |
 
 Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entstehen.
 
@@ -129,6 +130,41 @@ Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entsteh
 - Tag `v0.8.0` in beiden Repos nachgetragen; README beider Repos auf Stand 0.8 gebracht.
 - Release-Ablauf dokumentiert in `docs/08_release.md`.
 
+## Stand 0.9 (umgesetzt)
+- **Burst im Rechenkern** (`src/core/physics/burst.ts`, `derive.ts`): ab n ≥ 2 gelten E_p/P_avg pro Burst; neue Werte
+  `nBurst`, `ePulsSub`, `dtSub`, `tBurst`, `F0Sub`, `F0zSub`. P_pk und I₀ beziehen sich auf den Sub-Puls, Abtrag pro Burst
+  (D, z, V, V̇/P mit F₀,sub), E_p,opt wird zur optimalen Burst-Energie. `FORMEL_VERSION` = 1.1; ohne Burst identisch zu 1.0
+  (Test). Referenzwerte in `04_formeln.md`, Tests in `burst.test.ts`.
+- **Rechner → Burst** (`/rechner/burst`): n und f_burst, Übersicht der übernommenen Werte, Kacheln Zeit/Energie, Fluenz,
+  Abtrag pro Burst; Vergleichstabelle n = 1 … 10 bei gleicher Burst-Energie (★ = höchstes V̇/P). Warnungen: n nicht
+  ganzzahlig, Δt < 10 τ, Burst länger als 1/f_rep. Die Parameter-Seite zeigt bei aktivem Burst einen Hinweis und
+  beschriftet Kacheln entsprechend.
+- **Logbuch:** Burst fließt in abgeleitete Werte und Snapshot ein (E_sub, F₀,sub, Δt, t_burst); „In Versuch übernehmen“
+  überträgt n und f_burst (Burst-Info des Versuchs bleibt). CSV mit `burstN`, `fBurst_MHz`, `F0Sub_J_cm2`.
+- **Druckansicht** (`src/features/print/`): „Drucken“ im Versuch und in der Reihe → `#/druck/v/<id>` bzw. `#/druck/r/<id>`,
+  eigene Route ohne Navigation, Papier immer hell. Versuch: Kopfdaten, Parameter, Snapshot mit Formelversion, Bemerkung.
+  Reihe: Tabelle (ID, Datum, Status, Werkstoff, λ, τ, E_p/P, f_rep, n, v, h, N, F₀, Bemerkung), im Druck 7 pt und
+  A4 quer (named page, Chrome/Edge). Zeilenlogik getestet (`printRows.test.ts`).
+- **Android:** eigenes maskable-Icon (Motiv in der sicheren Zone), Checkliste in `docs/09_android-check.md`.
+- „Aus Rechner“ in der Reihe nutzt jetzt dieselbe Eingabefunktion wie der Rechner (`calcDeriveInput`).
+
+## Plan 0.9 (festgelegt 2026-11-16)
+- **Druckansicht:** „Drucken“ im Versuch (Kopfdaten, alle Parameter, abgeleitete Werte aus dem Snapshot mit Formelversion,
+  Bemerkung, Tags) und in der Reihe (kompakte Tabelle: ID, Datum, Kernparameter, F₀, Status). Helles Layout per
+  `@media print`, Navigation ausgeblendet; iPhone über Teilen → Drucken/PDF.
+- **Burst-Rechner** (`/rechner/burst`): E_sub = E_burst/n (gleichmäßige Aufteilung als gekennzeichnete Annahme),
+  Δt = 1/f_burst, Burst-Dauer (n−1)·Δt, F₀ pro Sub-Puls und pro Burst, Optimum je Sub-Puls F₀,sub = e²F_th → optimale
+  Burst-Energie. Formeln + Referenzwerte in `04_formeln.md`, Tests.
+- **Bedeutung von E_p/P_avg bei Burst:** Energie **pro Burst** (E_p = P_avg/f_rep); Sub-Puls = E_p/n.
+- **Snapshot:** Burst fließt in die abgeleiteten Werte ein → `FORMEL_VERSION` 1.0 → 1.1. Alte Snapshots bleiben unverändert.
+- **Android-Check:** Emulation in Chrome (Installieren, Zahlenfelder, Export/Teilen, Layout) + Checkliste fürs echte Gerät.
+
+## Plan 0.10
+- Kenngrößen ohne Modellannahme: Pulsperiode, thermische Diffusionslänge während τ und zwischen Pulsen, Vergleich mit w₀/Δx.
+- Werkstofffeld c_p (mit Quelle), κ = λ/(ρ·c_p) berechnet.
+- Akkumulationsmodell (z. B. Weber et al. 2014, Bauer et al. 2015) nur nach Bestätigung der Formel aus der Primärquelle;
+  Konvention der Diffusionslänge (√(κτ) vs. 2√(κτ)) dabei festlegen.
+
 ## Entscheidungen
 - **Paketversionen:** TypeScript bleibt auf 6.0.x, weil typescript-eslint TypeScript 7 noch nicht unterstützt.
 - **Pages-Workflow nur im öffentlichen Repo:** `pages.yml` liegt auch im privaten Repo (damit der Code-Stand identisch ist),
@@ -211,3 +247,8 @@ Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entsteh
 - **Herkunft von w₀ im Rechner:** Nach „w₀ in Rechner“ merkt sich der Rechner die Quelle „d2“; eine manuelle Änderung von
   w₀ löscht sie wieder.
 - **Warnungen:** D²-Fit mit weniger als 4 Punkten oder R² < 0,95; Inkubation mit S > 1,05 (Schwelle steigt mit N).
+- **Burst-Zählung:** n wird gerundet; n < 2 bedeutet „kein Burst“, damit „1“ im Formular keine Burst-Werte erzeugt.
+- **Inkubation bei Burst:** N bleibt die eingegebene Pulszahl; ob Sub-Pulse als Pulse zählen, entscheidet die Eingabe.
+- **Druckansicht als eigene Route** statt nur `@media print`: auf dem iPhone druckt Safari die sichtbare Seite, so sieht
+  man vorher genau, was aufs Papier kommt. Die Reihe druckt den gespeicherten Snapshot (Stand beim Speichern).
+- **Snapshot-Werte bei Burst:** Alte Versuche mit Burst behalten ihren Snapshot 1.0, bis sie erneut gespeichert werden.

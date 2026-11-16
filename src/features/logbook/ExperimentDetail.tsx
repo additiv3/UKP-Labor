@@ -305,6 +305,7 @@ function ExperimentForm({ exp }: { exp: Experiment }) {
           />
         </div>
         <TextField label="Burst-Info" value={p.burst?.info} onChange={(v) => setP({ burst: { ...p.burst, info: v } })} />
+        <p className="muted small">Ab 2 Pulsen pro Burst gelten Leistung und Pulsenergie pro Burst; abgeleitete Werte pro Sub-Puls.</p>
       </Section>
 
       <Section title="Strahl">
@@ -363,11 +364,18 @@ function ExperimentForm({ exp }: { exp: Experiment }) {
       <section className="card">
         <h2>Abgeleitete Werte</h2>
         <div className="tiles">
-          <ResultTile label="E_p am Werkstück" value={formatSI(d.ePuls, 'J')} tex={FORMULAS.ePuls} />
+          <ResultTile label={d.nBurst !== undefined ? 'E_burst am Werkstück' : 'E_p am Werkstück'} value={formatSI(d.ePuls, 'J')} tex={FORMULAS.ePuls} />
           <ResultTile label="P_avg am Werkstück" value={formatSI(d.pAvg, 'W')} tex={FORMULAS.pAvg} />
-          <ResultTile label="Spitzenfluenz F₀" value={formatIn(d.F0, 'fluence')} tex={FORMULAS.F0} />
+          <ResultTile label={d.nBurst !== undefined ? 'F₀ Burst' : 'Spitzenfluenz F₀'} value={formatIn(d.F0, 'fluence')} tex={FORMULAS.F0} />
           {p.fokuslage ? <ResultTile label="F₀(z) Oberfläche" value={formatIn(d.F0z, 'fluence')} tex={FORMULAS.F0z} /> : null}
-          <ResultTile label="Spitzenintensität I₀" value={formatIn(d.I0, 'intensity')} tex={FORMULAS.I0} />
+          {d.nBurst !== undefined && (
+            <>
+              <ResultTile label={`E_sub (n = ${d.nBurst})`} value={formatSI(d.ePulsSub, 'J')} tex={FORMULAS.eSub} />
+              <ResultTile label="F₀,sub" value={formatIn(d.F0Sub, 'fluence')} tex={FORMULAS.F0Sub} />
+              {d.dtSub !== undefined && <ResultTile label="Sub-Puls-Abstand Δt" value={formatSI(d.dtSub, 's')} tex={FORMULAS.dtSub} />}
+            </>
+          )}
+          <ResultTile label={d.nBurst !== undefined ? 'I₀ (Sub-Puls)' : 'Spitzenintensität I₀'} value={formatIn(d.I0, 'intensity')} tex={FORMULAS.I0} />
           <ResultTile label="Rayleighlänge z_R" value={formatSI(d.zR, 'm')} tex={FORMULAS.zR} />
           <ResultTile label="Pulsabstand Δx" value={formatSI(d.dx, 'm')} tex={FORMULAS.dx} />
           <ResultTile label="Pulsüberlapp OL" value={pct(d.OL)} tex={FORMULAS.OL} warn={d.OL !== undefined && d.OL < 0 ? 'Lücke' : undefined} />
@@ -406,6 +414,9 @@ function ExperimentForm({ exp }: { exp: Experiment }) {
           }
         >
           Duplizieren
+        </button>
+        <button type="button" className="btn" onClick={() => navigate(`/druck/v/${exp.id}`)}>
+          Drucken
         </button>
         <button type="button" className="btn btn-danger" onClick={() => void remove()}>
           Versuch löschen

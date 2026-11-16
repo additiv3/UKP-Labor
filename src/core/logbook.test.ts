@@ -50,6 +50,23 @@ describe('Snapshot', () => {
   });
 });
 
+describe('Snapshot mit Burst (Formelversion 1.1)', () => {
+  it('E_p gilt pro Burst; Sub-Puls-Werte im Snapshot', () => {
+    const s = experimentSnapshot({ ...exp().params, burst: { anzahl: 4, freq: 40e6 } });
+    expect(s.werte.ePuls).toBeCloseTo(50e-6, 12);
+    expect(s.werte.nBurst).toBe(4);
+    expect(s.werte.ePulsSub).toBeCloseTo(12.5e-6, 12);
+    expect(s.werte.F0Sub! / 1e4).toBeCloseTo(4.627, 2);
+    expect(s.werte.dtSub).toBeCloseTo(25e-9, 15);
+    expect(s.werte.tBurst).toBeCloseTo(75e-9, 15);
+  });
+  it('ohne Burst keine Burst-Werte', () => {
+    const s = experimentSnapshot({ ...exp().params, burst: { anzahl: 1 } });
+    expect(s.werte.nBurst).toBeUndefined();
+    expect(s.werte.ePulsSub).toBeUndefined();
+  });
+});
+
 describe('Duplizieren', () => {
   it('neue ID, heutiges Datum, Parameter kopiert, Bemerkung leer', () => {
     const src = exp();

@@ -24,6 +24,7 @@ export function calcToExperiment(s: CalcState, d: Derived, optikW0Datenblatt?: n
     hatch: v.hatch,
     nPulse: v.nPulse,
   };
+  if (d.nBurst !== undefined) p.burst = { anzahl: d.nBurst, ...(v.fBurst !== undefined ? { freq: v.fBurst } : {}) };
   if (s.energyMode === 'pAvg') p.pAvg = v.pAvg;
   else p.ePuls = v.ePuls;
   if (s.w0Mode === 'direkt') {
@@ -55,5 +56,7 @@ export function mergeIntoParams(existing: ExperimentParams, incoming: Experiment
   if (incoming.ePuls !== undefined) delete out.pAvg;
   if (incoming.v !== undefined) delete out.pulsabstand;
   if (incoming.w0 !== undefined && incoming.w0Quelle === undefined) delete out.w0Quelle;
+  // Burst-Info (Freitext) des Versuchs bleibt erhalten
+  if (incoming.burst && existing.burst?.info) out.burst = { ...incoming.burst, info: existing.burst.info };
   return out;
 }

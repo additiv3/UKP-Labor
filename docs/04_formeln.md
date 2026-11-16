@@ -1,7 +1,8 @@
 # 04 — Formeln und Test-Referenzwerte
 
 Annahmen: Gauß-Strahl (TEM00, ggf. mit M²), Gauß-förmiges Zeitprofil, τ = FWHM. Alle Größen in SI.
-`formelVersion = "1.0"` (bei Änderung hochzählen, wird im Versuchs-Snapshot gespeichert).
+`formelVersion = "1.1"` (bei Änderung hochzählen, wird im Versuchs-Snapshot gespeichert).
+1.0 → 1.1 (v0.9): Burst-Modus. Ohne Burst (n < 2) sind alle Werte identisch zu 1.0.
 
 ## Puls und Leistung
 | Größe | Formel |
@@ -51,6 +52,30 @@ UI-Anzeige von Fluenz in J/cm², Intensität in W/cm² (1 J/cm² = 10⁴ J/m²).
 
 Quelle Effizienzmodell: Neuenschwander et al., LiM 2013 / ICALEO 2010. Anzeige in mm³/(min·W).
 
+## Burst (ab Formelversion 1.1)
+n Sub-Pulse im Abstand $\Delta t = 1/f_{burst}$ bilden einen Burst; Bursts folgen mit $f_{rep}$.
+**$E_p = P_{avg}/f_{rep}$ ist die Burst-Energie** $E_{burst}$ (so misst ein Leistungsmesskopf). Burst aktiv ab n ≥ 2 (gerundet).
+
+Annahmen: Energie gleichmäßig auf die Sub-Pulse verteilt; Sub-Pulse zeitlich getrennt ($\Delta t \gg 	au$) und im
+Abtrag unabhängig (keine Abschirmung durch Plasma/Partikel, keine Wärmeakkumulation). Ansatz: Abtragsmodell pro Sub-Puls,
+wie im Burst-Modell nach Neuenschwander et al. — **Quelle prüfen und Citekey ergänzen (TODO: verifizieren).**
+
+| Größe | Formel |
+|---|---|
+| Energie pro Sub-Puls | $E_{sub} = E_{burst}/n$ |
+| Sub-Puls-Abstand | $\Delta t = 1/f_{burst}$ |
+| Burst-Dauer | $t_{burst} = (n-1)/f_{burst}$ |
+| Spitzenfluenz pro Sub-Puls | $F_{0,sub} = 2E_{sub}/(\pi w_0^2) = F_{0,burst}/n$ |
+| Spitzenleistung, Intensität | mit $E_{sub}$ statt $E_p$ |
+| Kraterdurchmesser | wie oben mit $F_{0,sub}$ |
+| Tiefe pro Burst | $z_{burst} = n\,\delta\ln(F_{0,sub}/F_{th})$ |
+| Volumen pro Burst | $V_{burst} = n\,	frac{\pi w_0^2\delta}{4}\ln^2(F_{0,sub}/F_{th})$ |
+| Spezifische Abtragsrate | $\dot V/P = 	frac{\delta}{2F_{0,sub}}\ln^2(F_{0,sub}/F_{th})$ |
+| Optimale Burst-Energie | $E_{burst,opt} = n\,e^2F_{th}\,\pi w_0^2/2$ (jeder Sub-Puls bei $F_{0,opt}$) |
+
+Scan-Größen ($\Delta x$, $OL$, $N_{1D}$, $N_{2D}$) beziehen sich auf Bursts (Folgefrequenz $f_{rep}$). Bei Defokus gilt
+wie oben $w(z)$ statt $w_0$.
+
 ## Auswertehilfen (Fit)
 - **D²-Methode (Liu):** $D^2 = 2w_0^2\ln(E_p) - 2w_0^2\ln(E_{th})$. Lineare Regression $D^2$ gegen $\ln E_p$:
   Steigung $m = 2w_0^2 \Rightarrow w_0 = \sqrt{m/2}$; Nullstelle $\Rightarrow E_{th}$; $F_{th} = 2E_{th}/(\pi w_0^2)$.
@@ -83,6 +108,20 @@ $v=1$ m/s, $h=10$ µm, $F_{th}=0{,}2$ J/cm², $\delta=20$ nm.
 | $(\dot V/P)_{max}$ | 0,16240 mm³/(min·W) |
 | $E_{p,opt}$ | 3,9924 µJ → $T$ = 0,079848 |
 | $F_{th}(N=100)$ bei $S=0{,}8$ | 0,079621 J/cm² |
+
+### Burst-Referenzwerte (obige Eingabe + n = 4, $f_{burst}$ = 40 MHz)
+| Ergebnis | Wert |
+|---|---|
+| $E_{sub}$ | 12,5 µJ |
+| $\Delta t$ / $t_{burst}$ | 25 ns / 75 ns |
+| $F_{0,sub}$ | 4,627 J/cm² (= $F_0$/4) |
+| $P_{pk}$ (Sub-Puls) | 13,048 MW |
+| $I_0$ (Sub-Puls) | 4,8297·10¹² W/cm² |
+| $D$ | 32,872 µm |
+| $z_{burst}$ | 251,31 nm |
+| $V_{burst}$ | 106,64 µm³ |
+| $\dot V/P$ | 0,12796 mm³/(min·W) |
+| $E_{burst,opt}$ | 15,970 µJ → $T$ = 0,31939 |
 
 Zusätzliche Tests: D²-Fit mit synthetischen Daten aus obigem $w_0$/$F_{th}$ muss beide Werte reproduzieren;
 Kantenfälle ($F_0 \le F_{th}$ → Krater = 0, keine NaN; Division durch 0 → `undefined` + UI-Hinweis).

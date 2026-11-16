@@ -72,6 +72,21 @@ export const FORMULA_CATALOG: CatalogGroup[] = [
     ],
   },
   {
+    title: 'Burst',
+    intro:
+      'n Sub-Pulse im Abstand 1/f_burst, Bursts mit f_rep. E_p und P_avg gelten pro Burst. Annahmen: Energie gleichmäßig verteilt, Sub-Pulse zeitlich getrennt und im Abtrag unabhängig (keine Abschirmung, keine Wärmeakkumulation). Ansatz nach Neuenschwander et al. (Quelle prüfen).',
+    entries: [
+      { name: 'Energie pro Sub-Puls', tex: FORMULAS.eSub },
+      { name: 'Sub-Puls-Abstand', tex: FORMULAS.dtSub },
+      { name: 'Burst-Dauer', tex: FORMULAS.tBurst },
+      { name: 'Spitzenfluenz pro Sub-Puls', tex: FORMULAS.F0Sub },
+      { name: 'Tiefe pro Burst', tex: FORMULAS.zAblBurst },
+      { name: 'Volumen pro Burst', tex: FORMULAS.VBurst },
+      { name: 'Spezifische Abtragsrate', tex: FORMULAS.VdotPBurst },
+      { name: 'Optimale Burst-Energie', tex: FORMULAS.EBurstOpt, note: 'jeder Sub-Puls bei F₀,opt = e² F_th' },
+    ],
+  },
+  {
     title: 'Auswertehilfen',
     entries: [
       {

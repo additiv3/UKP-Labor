@@ -14,7 +14,8 @@ import { ResultTile } from '../../components/ResultTile';
 import { Segmented } from '../../components/Segmented';
 import { useThemeVersion } from '../../components/useThemeVersion';
 import { CausticPlot } from './CausticPlot';
-import { CALC_FIELDS, DEFAULT_UNITS, type CalcField, type CalcState } from './state';
+import { Link } from 'react-router-dom';
+import { CALC_FIELDS, DEFAULT_UNITS, calcDeriveInput, type CalcField, type CalcState } from './state';
 import { useCalcState } from './useCalcState';
 
 const pct = (x: number | undefined) => (x === undefined ? '–' : `${formatNumber(x * 100, 4)} %`);
@@ -56,32 +57,8 @@ export function CalculatorScreen() {
   };
 
   const v = s.v;
-  const d = useMemo(
-    () =>
-      derive({
-        lambda: v.lambda,
-        tau: v.tau,
-        profile: s.profile,
-        pAvg: s.energyMode === 'pAvg' ? v.pAvg : undefined,
-        ePuls: s.energyMode === 'ePuls' ? v.ePuls : undefined,
-        fRep: v.fRep,
-        transmission: v.transmission,
-        m2: v.m2,
-        f: v.f,
-        wL: v.wL,
-        w0: s.w0Mode === 'direkt' ? v.w0 : undefined,
-        z: v.z,
-        v: v.v,
-        hatch: v.hatch,
-        fth: v.fth,
-        delta: v.delta,
-        s: v.s,
-        nPulse: v.nPulse,
-        area: v.area,
-        nLayer: v.nLayer,
-      }),
-    [v, s.profile, s.energyMode, s.w0Mode],
-  );
+  const d = useMemo(() => derive(calcDeriveInput(s)), [s]);
+  const burst = d.nBurst !== undefined;
 
   // Grenzwerte gegen Datenblatt (an der Quelle). Die Energie-Warnung erscheint am gerade sichtbaren Eingabefeld.
   const lim = checkLimits(
@@ -133,6 +110,12 @@ export function CalculatorScreen() {
               ? field('pAvg', { hint: d.ePulsQuelle !== undefined ? `→ E_p = ${formatSI(d.ePulsQuelle, 'J')}` : undefined })
               : field('ePuls', { hint: d.pAvgQuelle !== undefined ? `→ P_avg = ${formatSI(d.pAvgQuelle, 'W')}` : undefined })}
             {field('fRep')}
+            {burst && (
+              <p className="notice small">
+                Burst aktiv: n = {d.nBurst}, Energie/Leistung gelten pro Burst. Spitzenleistung, Intensität und Abtrag
+                beziehen sich auf den Sub-Puls. <Link to="/rechner/burst">Burst bearbeiten</Link>
+              </p>
+            )}
             {field('transmission', {
               placeholder: '100',
               warn: tWarn,
@@ -197,13 +180,14 @@ export function CalculatorScreen() {
             <h2>Puls &amp; Leistung</h2>
             <div className="tiles">
               <ResultTile
-                label="E_p am Werkstück"
+                label={burst ? 'E_burst am Werkstück' : 'E_p am Werkstück'}
                 value={formatSI(d.ePuls, 'J')}
+                sub={burst ? `E_sub = ${formatSI(d.ePulsSub, 'J')}` : undefined}
                 tex={`\\begin{gathered}${FORMULAS.ePuls}\\\\ ${FORMULAS.transmission}\\end{gathered}`}
               />
               <ResultTile label="P_avg am Werkstück" value={formatSI(d.pAvg, 'W')} tex={FORMULAS.pAvg} />
-              <ResultTile label="Spitzenleistung P_pk" value={formatSI(d.pPk, 'W')} tex={FORMULAS.pPk} />
-              <ResultTile label="Spitzenintensität I₀" value={formatIn(d.I0, 'intensity')} tex={FORMULAS.I0} />
+              <ResultTile label={burst ? 'P_pk (Sub-Puls)' : 'Spitzenleistung P_pk'} value={formatSI(d.pPk, 'W')} tex={FORMULAS.pPk} />
+              <ResultTile label={burst ? 'I₀ (Sub-Puls)' : 'Spitzenintensität I₀'} value={formatIn(d.I0, 'intensity')} tex={FORMULAS.I0} />
             </div>
           </section>
 
@@ -222,7 +206,12 @@ export function CalculatorScreen() {
                 tex={FORMULAS.zR}
                 sub={d.dof !== undefined ? `Schärfentiefe 2z_R = ${formatSI(d.dof, 'm')}` : undefined}
               />
-              <ResultTile label="Spitzenfluenz F₀ (Fokus)" value={formatIn(d.F0, 'fluence')} tex={FORMULAS.F0} />
+              <ResultTile
+                label={burst ? 'F₀ Burst (Fokus)' : 'Spitzenfluenz F₀ (Fokus)'}
+                value={formatIn(d.F0, 'fluence')}
+                tex={FORMULAS.F0}
+                sub={burst ? `Sub-Puls: ${formatIn(d.F0Sub, 'fluence')}` : undefined}
+              />
               <ResultTile label="Mittlere Fluenz F̄" value={formatIn(d.Fmean, 'fluence')} tex={FORMULAS.Fmean} />
               {hasDefocus && (
                 <>
@@ -271,17 +260,25 @@ export function CalculatorScreen() {
                 label="Kraterdurchmesser D"
                 value={formatSI(d.D, 'm')}
                 tex={FORMULAS.D}
-                warn={belowThreshold ? 'F₀ ≤ F_th: kein Abtrag' : undefined}
+                warn={
+                  burst
+                    ? d.F0zSub !== undefined && d.fthEff !== undefined && d.F0zSub <= d.fthEff
+                      ? 'F₀,sub ≤ F_th: kein Abtrag'
+                      : undefined
+                    : belowThreshold
+                      ? 'F₀ ≤ F_th: kein Abtrag'
+                      : undefined
+                }
               />
-              <ResultTile label="Tiefe pro Puls z_abl" value={formatSI(d.zAbl, 'm')} tex={FORMULAS.zAbl} />
-              <ResultTile label="Volumen pro Puls V_p" value={formatIn(d.Vp, 'volume')} tex={FORMULAS.Vp} />
-              <ResultTile label="Spez. Abtragsrate V̇/P" value={formatIn(d.VdotP, 'removalRate')} tex={FORMULAS.VdotP} />
+              <ResultTile label={burst ? 'Tiefe pro Burst' : 'Tiefe pro Puls z_abl'} value={formatSI(d.zAbl, 'm')} tex={burst ? FORMULAS.zAblBurst : FORMULAS.zAbl} />
+              <ResultTile label={burst ? 'Volumen pro Burst' : 'Volumen pro Puls V_p'} value={formatIn(d.Vp, 'volume')} tex={burst ? FORMULAS.VBurst : FORMULAS.Vp} />
+              <ResultTile label="Spez. Abtragsrate V̇/P" value={formatIn(d.VdotP, 'removalRate')} tex={burst ? FORMULAS.VdotPBurst : FORMULAS.VdotP} />
               <ResultTile label="Optimale Fluenz F₀,opt" value={formatIn(d.F0opt, 'fluence')} tex={FORMULAS.F0opt} />
               <ResultTile label="(V̇/P)_max" value={formatIn(d.VdotPmax, 'removalRate')} tex={FORMULAS.VdotPmax} />
               <ResultTile
-                label="E_p,opt am Werkstück"
+                label={burst ? 'E_burst,opt am Werkstück' : 'E_p,opt am Werkstück'}
                 value={formatSI(d.EpOpt, 'J')}
-                tex={FORMULAS.EpOpt}
+                tex={burst ? FORMULAS.EBurstOpt : FORMULAS.EpOpt}
                 sub={d.Topt !== undefined ? `→ Abschwächung T = ${pct(d.Topt)}` : undefined}
                 warn={d.Topt !== undefined && d.Topt > 1 ? 'Mehr Energie nötig als verfügbar' : undefined}
               />

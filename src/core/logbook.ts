@@ -13,6 +13,8 @@ export function toDeriveInput(p: ExperimentParams): DeriveInput {
     pAvg: p.pAvg,
     ePuls: p.ePuls,
     fRep: p.fRep,
+    burstN: p.burst?.anzahl,
+    fBurst: p.burst?.freq,
     transmission: p.transmission,
     w0: p.w0,
     m2: p.m2,
@@ -34,7 +36,7 @@ export function deriveExperiment(p: ExperimentParams): Derived {
  */
 export function experimentSnapshot(p: ExperimentParams): NonNullable<Experiment['abgeleitet']> {
   const d = deriveExperiment(p);
-  const keep: (keyof Derived)[] = ['ePulsQuelle', 'pAvgQuelle', 'ePuls', 'pAvg', 'pPk', 'w0', 'zR', 'wz', 'F0', 'Fmean', 'F0z', 'I0', 'dx', 'OL', 'N1D', 'N2D', 'OLh'];
+  const keep: (keyof Derived)[] = ['ePulsQuelle', 'pAvgQuelle', 'ePuls', 'pAvg', 'pPk', 'w0', 'zR', 'wz', 'F0', 'Fmean', 'F0z', 'I0', 'dx', 'OL', 'N1D', 'N2D', 'OLh', 'nBurst', 'ePulsSub', 'dtSub', 'tBurst', 'F0Sub', 'F0zSub'];
   const s = snapshot(d);
   const werte: Record<string, number> = {};
   for (const k of keep) if (s.werte[k] !== undefined) werte[k] = s.werte[k];
