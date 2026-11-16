@@ -41,6 +41,7 @@ Deployment: GitHub Actions → GitHub Pages (`base` in `vite.config.ts` = Repo-N
 - `docs/05_export-sync.md` — Exportformat, Merge-Regeln, Dateinamen
 - `docs/06_ui.md` — Navigation, Screens, Bedienung
 - `docs/07_roadmap.md` — Versionen und aktueller Stand (nach jedem Meilenstein aktualisieren)
+- `docs/08_release.md` — Release-Ablauf privat → öffentlich, Release-Historie
 
 ## Befehle (nach dem Setup)
 - `npm run dev` · `npm run build` · `npm test` · `npm run lint`

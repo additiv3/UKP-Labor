@@ -123,6 +123,12 @@ Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entsteh
 
 **Alle geplanten Versionen 0.1–0.8 sind umgesetzt.** Offen sind die Punkte unter „später“.
 
+## Abschluss Cloud-Entwicklung (2026-11-16)
+- Cloud-Branch `claude/inspiring-heisenberg-kahtk9` in `main` des privaten Repos übernommen; lokal geprüft
+  (Lint sauber, 165 Tests grün, Build ok).
+- Tag `v0.8.0` in beiden Repos nachgetragen; README beider Repos auf Stand 0.8 gebracht.
+- Release-Ablauf dokumentiert in `docs/08_release.md`.
+
 ## Entscheidungen
 - **Paketversionen:** TypeScript bleibt auf 6.0.x, weil typescript-eslint TypeScript 7 noch nicht unterstützt.
 - **Pages-Workflow nur im öffentlichen Repo:** `pages.yml` liegt auch im privaten Repo (damit der Code-Stand identisch ist),
