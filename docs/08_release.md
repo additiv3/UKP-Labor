@@ -2,7 +2,7 @@
 
 Zwei Repos (siehe `CLAUDE.md`):
 - `additiv3/UKP-Labor-privat` — Entwicklung, Quelle der Wahrheit. Gearbeitet wird auf `main` (oder Feature-Branch → Merge in `main`).
-- `additiv3/UKP-Labor` — öffentliche Auslieferung. Ein Push auf `main` oder ein Tag `v*` startet `pages.yml` → GitHub Pages.
+- `additiv3/UKP-Labor` — öffentliche Auslieferung. Ein Push auf `main` (oder manuell) startet `pages.yml`; Tags lösen kein Deployment aus, weil die Pages-Umgebung nur `main` zulässt → GitHub Pages.
 
 ## Schritte pro Release
 1. Im privaten Repo: `npm run lint`, `npm test`, `npm run build` grün.

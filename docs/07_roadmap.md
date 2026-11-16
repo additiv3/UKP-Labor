@@ -132,7 +132,7 @@ Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entsteh
 ## Entscheidungen
 - **Paketversionen:** TypeScript bleibt auf 6.0.x, weil typescript-eslint TypeScript 7 noch nicht unterstützt.
 - **Pages-Workflow nur im öffentlichen Repo:** `pages.yml` liegt auch im privaten Repo (damit der Code-Stand identisch ist),
-  der Job läuft aber nur, wenn `github.repository == 'additiv3/UKP-Labor'`. Auslöser: Push auf `main`, Tag `v*` oder manuell.
+  der Job läuft aber nur, wenn `github.repository == 'additiv3/UKP-Labor'`. Auslöser: Push auf `main` oder manuell (Tags nicht: die Umgebung `github-pages` erlaubt nur `main`).
   `base` in `vite.config.ts` ist `/UKP-Labor/`.
 - **Seed-Werkstoffe mit festen UUIDs** (`5e3d0001-…`) und `updatedAt = 2026-01-01`: So entstehen beim Import-Merge
   zwischen Geräten keine Duplikate, und jede Nutzeränderung gewinnt per last-writer-wins. Kürzel: Si, FS, BSG, Sap, Cu,
