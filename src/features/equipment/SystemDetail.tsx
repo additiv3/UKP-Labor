@@ -10,6 +10,8 @@ import { useAutosave } from '../../components/useAutosave';
 import { SaveBadge } from '../../components/SaveBadge';
 import { BackLink } from '../../components/MasterDetail';
 import { componentSummary, newComponent } from './componentMeta';
+import { StationMatrixView } from './StationMatrixView';
+import { StatusBadge } from './BelegField';
 
 function SystemForm({ system }: { system: System }) {
   const { draft, change, status, error } = useAutosave(
@@ -62,6 +64,11 @@ export function SystemDetail() {
       <SystemForm key={system.id} system={system} />
 
       <section className="card">
+        <h2>Übersicht Stationen × Wellenlängen</h2>
+        <StationMatrixView systemId={systemId} components={components} />
+      </section>
+
+      <section className="card">
         <h2>Komponenten</h2>
         {grouped.length === 0 && <p className="muted">Noch keine Komponenten. Beginne mit der Laserquelle.</p>}
         {grouped.map(([typ, cs]) => (
@@ -72,7 +79,9 @@ export function SystemDetail() {
                 <li key={c.id}>
                   <Link to={`/anlagen/${systemId}/k/${c.id}`} className="list-item list-link">
                     <div className="list-main">
-                      <span className="list-title">{c.name}</span>
+                      <span className="list-title">
+                        {c.name} <StatusBadge status={c.status ?? 'unbekannt'} compact />
+                      </span>
                       <span className="muted small">{componentSummary(c) || [c.hersteller, c.modell].filter(Boolean).join(' ')}</span>
                     </div>
                     <span aria-hidden="true">›</span>

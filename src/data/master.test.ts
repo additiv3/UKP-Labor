@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from './db';
+import { db, SCHEMA_VERSION } from './db';
 import { readMaster, writeMaster, type DirHandle } from './master';
 import { applyMergePlan, readAllData } from './exchange';
 import { experimentsRepo, seriesRepo } from './repos';
@@ -52,7 +52,7 @@ describe('Hauptlogbuch', () => {
     j.data.experiments.push({ ...j.data.experiments[0], id: '11111111-1111-4111-8111-111111111111', versuchsId: 'B1-Si-002' });
     dir.files.set('logbuch.json', JSON.stringify(j));
 
-    const parsed = parseExport((await readMaster(dir))!, 1);
+    const parsed = parseExport((await readMaster(dir))!, SCHEMA_VERSION);
     const plan = planMerge(await readAllData(), parsed.file!.data);
     expect(plan.counts.experiments.neu).toBe(1);
     await applyMergePlan(plan);

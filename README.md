@@ -2,7 +2,7 @@
 
 Persönliches Laborbuch, Parameter-Rechner und Nachschlagewerk für die UKP-Laserablation (PWA, offline).
 
-**App:** https://additiv3.github.io/UKP-Labor/ · aktueller Stand: **v0.9.0**
+**App:** https://additiv3.github.io/UKP-Labor/ · aktueller Stand: **v0.10.0**
 
 - Läuft im Browser und als App auf dem Home-Bildschirm (iPhone: Safari → Teilen → „Zum Home-Bildschirm“).
 - Alle Daten bleiben lokal auf dem Gerät. Austausch nur per Export/Import-Datei.

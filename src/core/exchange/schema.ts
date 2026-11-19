@@ -3,7 +3,17 @@
  * Unbekannte Zusatzfelder bleiben erhalten (looseObject), damit nichts verloren geht.
  */
 import { z } from 'zod';
-import { COMPONENT_TYPES, MATERIAL_CLASSES, SYNC_TABLES, type SyncEntityMap, type SyncTable } from '../../data/types';
+import {
+  BANDS,
+  BETRIEBS_STATUS,
+  COMPONENT_TYPES,
+  MATERIAL_CLASSES,
+  STATION_ARTEN,
+  SYNC_TABLES,
+  type SyncEntityMap,
+  type SyncTable,
+} from '../../data/types';
+import { upgradeRecord } from './migrate';
 
 export const APP_ID = 'ukp-labor';
 
@@ -24,6 +34,9 @@ const base = {
 
 export const systemSchema = z.looseObject({ ...base, name: z.string(), standort: optStr, beschreibung: optStr, notizen: optStr });
 
+const belege = z.record(z.string(), z.looseObject({ unbestaetigt: z.boolean().optional(), quelle: optStr })).optional();
+const status = z.enum(BETRIEBS_STATUS).optional();
+
 const componentBase = {
   ...base,
   systemId: z.string(),
@@ -32,14 +45,37 @@ const componentBase = {
   modell: optStr,
   datenblatt: optStr,
   notizen: optStr,
+  status,
 };
+
+const wellenlaengeSchema = z.looseObject({
+  id: z.string().min(1),
+  lambda: optNum,
+  bezeichnung: optStr,
+  pMax: optNum,
+  ePulsMax: optNum,
+  m2: optNum,
+  notiz: optStr,
+  belege,
+});
+
+const strahlengangSchema = z.looseObject({
+  id: z.string().min(1),
+  laserId: optStr,
+  wellenlaengeId: optStr,
+  band: z.enum(BANDS).optional(),
+  status,
+  w0: optNum,
+  notiz: optStr,
+  belege,
+});
 
 export const componentSchema = z.discriminatedUnion('typ', [
   z.looseObject({
     ...componentBase,
     typ: z.literal('laserquelle'),
     params: z.looseObject({
-      wellenlaengen: z.array(num),
+      wellenlaengen: z.array(wellenlaengeSchema),
       pMax: optNum,
       ePulsMax: optNum,
       fRepMin: optNum,
@@ -50,6 +86,20 @@ export const componentSchema = z.discriminatedUnion('typ', [
       rohstrahlRadius: optNum,
       burst: z.boolean().optional(),
       burstInfo: optStr,
+      belege,
+    }),
+  }),
+  z.looseObject({
+    ...componentBase,
+    typ: z.literal('station'),
+    params: z.looseObject({
+      art: z.enum(STATION_ARTEN).optional(),
+      laserIds: z.array(z.string()),
+      strahlengaenge: z.array(strahlengangSchema),
+      brennweite: optNum,
+      objektiv: optStr,
+      feldgroesse: optNum,
+      belege,
     }),
   }),
   z.looseObject({
@@ -61,21 +111,22 @@ export const componentSchema = z.discriminatedUnion('typ', [
       eingangsapertur: optNum,
       w0Datenblatt: optNum,
       feldgroesse: optNum,
+      belege,
     }),
   }),
   z.looseObject({
     ...componentBase,
     typ: z.literal('scanner'),
-    params: z.looseObject({ vMax: optNum, feldgroesse: optNum, apertur: optNum }),
+    params: z.looseObject({ vMax: optNum, feldgroesse: optNum, apertur: optNum, belege }),
   }),
   z.looseObject({
     ...componentBase,
     typ: z.literal('achsen'),
-    params: z.looseObject({ anzahl: optNum, verfahrwege: optStr, genauigkeit: optNum }),
+    params: z.looseObject({ anzahl: optNum, verfahrwege: optStr, genauigkeit: optNum, belege }),
   }),
   z.looseObject({
     ...componentBase,
-    typ: z.enum(COMPONENT_TYPES.filter((t) => !['laserquelle', 'optik', 'scanner', 'achsen'].includes(t)) as [
+    typ: z.enum(COMPONENT_TYPES.filter((t) => !['laserquelle', 'station', 'optik', 'scanner', 'achsen'].includes(t)) as [
       'strahlformung',
       'leistungsmesser',
       'messgeraet',
@@ -259,7 +310,8 @@ export function parseExport(text: string, currentSchemaVersion: number): ParseRe
   for (const t of SYNC_TABLES) {
     const arr = (head.data.data[t] as unknown[] | undefined) ?? [];
     arr.forEach((rec, index) => {
-      const r = ENTITY_SCHEMAS[t].safeParse(rec);
+      // Ältere Dateien erst auf das aktuelle Schema heben (gleiche Migration wie in der Datenbank)
+      const r = ENTITY_SCHEMAS[t].safeParse(upgradeRecord(t, structuredClone(rec), head.data.schemaVersion));
       if (r.success) (data[t] as unknown[]).push(r.data);
       else {
         const id = typeof rec === 'object' && rec && 'id' in rec ? String((rec as { id: unknown }).id) : undefined;

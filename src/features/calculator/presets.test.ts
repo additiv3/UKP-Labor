@@ -4,12 +4,16 @@ import type { LitValue } from '../../data/types';
 
 describe('Rechner-Presets', () => {
   it('Laser belegt nur vorhandene Werte vor', () => {
-    expect(laserPresetValues({ wellenlaengen: [1030e-9, 515e-9], tauMin: 900e-15, m2: 1.2 })).toEqual({
+    expect(laserPresetValues({ wellenlaengen: [{ id: 'a', lambda: 1030e-9 }, { id: 'b', lambda: 515e-9 }], tauMin: 900e-15, m2: 1.2 })).toEqual({
       lambda: 1030e-9,
       tau: 900e-15,
       m2: 1.2,
     });
-    expect(laserPresetValues({ wellenlaengen: [1030e-9, 515e-9] }, 515e-9)).toEqual({ lambda: 515e-9 });
+    expect(laserPresetValues({ wellenlaengen: [{ id: 'a', lambda: 1030e-9 }, { id: 'b', lambda: 515e-9 }] }, 515e-9)).toEqual({ lambda: 515e-9 });
+    // M² der Wellenlänge hat Vorrang vor dem der Laserquelle; Einträge ohne λ werden übersprungen
+    expect(
+      laserPresetValues({ wellenlaengen: [{ id: 'x' }, { id: 'b', lambda: 515e-9, m2: 1.3 }], m2: 1.1 }),
+    ).toEqual({ lambda: 515e-9, m2: 1.3 });
     expect(laserPresetValues({ wellenlaengen: [] })).toEqual({});
   });
   it('Optik belegt Brennweite und w0 laut Datenblatt vor', () => {

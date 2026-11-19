@@ -1,15 +1,17 @@
 import type { Component, LaserParams, LitValue, OptikParams } from '../../data/types';
 import type { CalcField, CalcState } from './state';
+import { laserLambdas, laserM2 } from '../../data/equipment';
 
 type V = CalcState['v'];
 
 /** Werte, die eine Laserquelle vorbelegt (nur vorhandene Datenblattwerte). */
 export function laserPresetValues(p: LaserParams, lambda?: number): V {
   const v: V = {};
-  const l = lambda ?? p.wellenlaengen[0];
+  const l = lambda ?? laserLambdas(p)[0];
   if (l !== undefined) v.lambda = l;
   if (p.tauMin !== undefined) v.tau = p.tauMin;
-  if (p.m2 !== undefined) v.m2 = p.m2;
+  const m2 = laserM2(p, l);
+  if (m2 !== undefined) v.m2 = m2;
   if (p.rohstrahlRadius !== undefined) v.wL = p.rohstrahlRadius;
   return v;
 }

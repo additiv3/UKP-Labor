@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from './db';
+import { db, SCHEMA_VERSION } from './db';
 import { applyMergePlan, countRecords, currentExport, hasUserData, readAllData, resetAllData } from './exchange';
 import { experimentsRepo, materialsRepo, seriesRepo } from './repos';
 import { _resetDeviceIdCache, getSetting, setSetting } from './repos/settings';
@@ -30,7 +30,7 @@ describe('Export/Import mit Datenbank', () => {
     expect(await hasUserData()).toBe(false);
     expect((await countRecords()).materials).toBe(12);
 
-    const parsed = parseExport(text, 1);
+    const parsed = parseExport(text, SCHEMA_VERSION);
     expect(parsed.issues).toEqual([]);
     const plan = planMerge(await readAllData(), parsed.file!.data);
     expect(plan.counts.experiments.neu).toBe(2);

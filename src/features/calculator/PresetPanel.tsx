@@ -8,6 +8,7 @@ import { LIT_GROESSE_LABEL } from '../../data/labels';
 import { formatIn } from '../../core/physics/units';
 import { formatLitConditions, formatLitValue } from '../materials/litFormat';
 import { asLaser, asOptik, laserPresetValues, litTarget, optikPresetValues } from './presets';
+import { laserLambdas } from '../../data/equipment';
 import type { CalcPreset, CalcState } from './state';
 
 interface Props {
@@ -96,9 +97,9 @@ export function PresetPanel({ state, update, components }: Props) {
               {sel('Scanner', pr.scannerId, scanner, (id) => setPreset({ scannerId: id }))}
             </div>
           )}
-          {laser && laser.wellenlaengen.length > 1 && (
+          {laser && laserLambdas(laser).length > 1 && (
             <div className="chips" role="radiogroup" aria-label="Wellenlänge der Laserquelle">
-              {laser.wellenlaengen.map((l) => (
+              {laserLambdas(laser).map((l) => (
                 <button
                   key={l}
                   type="button"

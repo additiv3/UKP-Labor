@@ -13,6 +13,7 @@ import type { Experiment, ExperimentParams, ExperimentStatus, W0Quelle } from '.
 import { deriveExperiment, experimentSnapshot, formatDateDe, parseTags } from '../../core/logbook';
 import { nextVersuchsId, sanitizeIdPart } from '../../core/ids';
 import { checkLimits } from '../../core/limits';
+import { laserLambdas, laserLimits, laserM2 } from '../../data/equipment';
 import { focusRadius } from '../../core/physics/beam';
 import { FORMULAS } from '../../core/physics/formulas';
 import { formatIn, formatNumber, formatSI, type Quantity } from '../../core/physics/units';
@@ -135,7 +136,7 @@ function ExperimentForm({ exp }: { exp: Experiment }) {
   const seriesCode = series.find((s) => s.id === draft.seriesId)?.code ?? '';
 
   const d = deriveExperiment(p);
-  const lim = checkLimits({ lambda: p.lambda, tau: p.tau, pAvg: d.pAvgQuelle, ePuls: d.ePulsQuelle, fRep: p.fRep, v: p.v }, laser, scanner);
+  const lim = checkLimits({ lambda: p.lambda, tau: p.tau, pAvg: d.pAvgQuelle, ePuls: d.ePulsQuelle, fRep: p.fRep, v: p.v }, laserLimits(laser, p.lambda), scanner);
 
   // Erwartetes ID-Präfix aus Reihe + Werkstoff
   const prefix = `${sanitizeIdPart(seriesCode)}-${sanitizeIdPart(material?.kurz || 'X')}-`;
@@ -160,9 +161,9 @@ function ExperimentForm({ exp }: { exp: Experiment }) {
       laserId: id,
       params: {
         ...x.params,
-        lambda: x.params.lambda ?? l?.wellenlaengen[0],
+        lambda: x.params.lambda ?? laserLambdas(l)[0],
         tau: x.params.tau ?? l?.tauMin,
-        m2: x.params.m2 ?? l?.m2,
+        m2: x.params.m2 ?? laserM2(l, x.params.lambda ?? laserLambdas(l)[0]),
       },
     }));
   };
@@ -257,9 +258,9 @@ function ExperimentForm({ exp }: { exp: Experiment }) {
       </Section>
 
       <Section title="Laser">
-        {laser && laser.wellenlaengen.length > 1 && (
+        {laser && laserLambdas(laser).length > 1 && (
           <div className="chips" role="radiogroup" aria-label="Wellenlänge der Laserquelle">
-            {laser.wellenlaengen.map((l) => (
+            {laserLambdas(laser).map((l) => (
               <button
                 key={l}
                 type="button"

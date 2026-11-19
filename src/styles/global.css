@@ -1316,3 +1316,162 @@ input[type='date'] {
   size: A4 landscape;
   margin: 10mm;
 }
+
+/* ---------------------------------------------------------------- Anlagen: Stationen, Status, Belege */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.stack-sm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+.sub-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.75rem 0.25rem;
+  background: var(--surface-2);
+}
+.sub-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.sub-card-head strong {
+  flex: 1;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.status-betriebsbereit {
+  color: var(--ok);
+}
+.status-justage-noetig {
+  color: var(--warn);
+}
+.status-nicht-aufgebaut {
+  color: var(--error);
+}
+.status-unbekannt {
+  color: var(--text-muted);
+}
+
+.beleg-field.is-unsure label {
+  color: var(--warn);
+}
+.beleg-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: -0.35rem 0 0.75rem;
+}
+.beleg-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: var(--touch);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.beleg-check input {
+  width: 20px;
+  height: 20px;
+  min-height: 0;
+  accent-color: var(--warn);
+}
+.beleg-quelle {
+  flex: 1;
+  min-width: 0;
+}
+
+.matrix {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85rem;
+}
+.matrix th,
+.matrix td {
+  padding: 0.4rem 0.25rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.matrix thead th {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.8rem;
+}
+.matrix tbody th {
+  font-weight: 500;
+  min-width: 5rem;
+}
+.matrix-station {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.1rem 0.35rem;
+  min-height: var(--touch);
+  color: var(--text);
+  text-decoration: none;
+}
+.matrix-station-name {
+  display: flex;
+  flex-direction: column;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+.matrix-cell {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.matrix-path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.1rem 0.25rem;
+}
+.matrix-path-text {
+  display: flex;
+  flex-direction: column;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+}
+.matrix-lambda {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.matrix-laser {
+  font-size: 0.72rem;
+  line-height: 1.25;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+.matrix-legend {
+  margin-top: 0.5rem;
+}

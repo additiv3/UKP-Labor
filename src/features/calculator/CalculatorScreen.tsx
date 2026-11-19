@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { componentsRepo } from '../../data/repos';
 import { checkLimits, type LimitField } from '../../core/limits';
+import { laserLimits } from '../../data/equipment';
 import { PresetPanel } from './PresetPanel';
 import { TransferPanel } from './TransferPanel';
 import { asLaser, asOptik, asScanner } from './presets';
@@ -63,7 +64,7 @@ export function CalculatorScreen() {
   // Grenzwerte gegen Datenblatt (an der Quelle). Die Energie-Warnung erscheint am gerade sichtbaren Eingabefeld.
   const lim = checkLimits(
     { lambda: v.lambda, tau: v.tau, pAvg: d.pAvgQuelle, ePuls: d.ePulsQuelle, fRep: v.fRep, v: v.v },
-    laser,
+    laserLimits(laser, v.lambda),
     scanner,
   );
   const energyWarn = [lim.pAvg, lim.ePuls].filter(Boolean).join(' · ') || undefined;

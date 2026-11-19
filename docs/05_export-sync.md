@@ -14,7 +14,7 @@ anderer Laptop ─Import logbuch.json→ gleicher Stand
 ```json
 {
   "app": "ukp-labor",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "formelVersion": "1.0",
   "exportedAt": "2026-11-13T10:00:00Z",
   "deviceId": "…", "deviceName": "iPhone",
@@ -23,6 +23,14 @@ anderer Laptop ─Import logbuch.json→ gleicher Stand
 }
 ```
 Inklusive Tombstones (`deleted: true`). Validierung beim Import mit zod; bei Fehlern Bericht statt Absturz.
+
+**Schemaversionen:** Dateien mit älterer `schemaVersion` werden beim Einlesen mit derselben Migration wie die Datenbank
+angehoben (`src/core/exchange/migrate.ts`), Dateien aus neueren App-Versionen abgelehnt.
+- 1 → 2 (App 0.10): Laser-Wellenlängen von `number[]` zu `[{ id, lambda, … }]`; neu: Komponententyp `station`,
+  `status`, `belege`. Zeitstempel bleiben unverändert.
+
+**Anlagen-Importdatei** (`daten/anlagen-import.json`, nur privates Repo) hat genau dieses Format und wird über
+„Import & Zusammenführen“ übernommen.
 
 ## Merge-Regeln (Import)
 1. Abgleich über `id` (UUID), nicht über Namen.

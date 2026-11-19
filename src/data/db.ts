@@ -11,12 +11,13 @@ import type {
   System,
 } from './types';
 import { seedMaterials } from './seed';
+import { migrateComponentV1toV2 } from '../core/exchange/migrate';
 
 /**
  * Schemaversion der Datenbank und des Exportformats.
  * Bei jeder Schemaänderung: Dexie-Version hochzählen + Migration (`.upgrade`) + diese Konstante anpassen.
  */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const DB_NAME = 'ukp-labor';
 
@@ -44,6 +45,18 @@ export class UkpDb extends Dexie {
       notes: 'id, datum, updatedAt, *tags',
       settings: 'key',
     });
+    // 2: Laser-Wellenlängen als Objekte (eigene Grenzwerte), Komponententyp „station“, Status, Belege.
+    // Indizes unverändert; nur Laserquellen werden umgeschrieben.
+    this.version(2)
+      .stores({ components: 'id, systemId, typ, updatedAt' })
+      .upgrade((tx) =>
+        tx
+          .table('components')
+          .toCollection()
+          .modify((c: Record<string, unknown>) => {
+            migrateComponentV1toV2(c);
+          }),
+      );
     // Läuft nur einmal beim Anlegen der Datenbank.
     this.on('populate', (tx) => {
       void tx.table('materials').bulkAdd(seedMaterials());

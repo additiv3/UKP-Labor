@@ -1,4 +1,4 @@
-import type { ComponentType, LitGroesse, MaterialClass, SyncTable } from './types';
+import type { BetriebsStatus, ComponentType, LitGroesse, MaterialClass, StationArt, SyncTable } from './types';
 import type { Quantity } from '../core/physics/units';
 
 export const MATERIAL_CLASS_LABEL: Record<MaterialClass, string> = {
@@ -12,6 +12,7 @@ export const MATERIAL_CLASS_LABEL: Record<MaterialClass, string> = {
 
 export const COMPONENT_TYPE_LABEL: Record<ComponentType, string> = {
   laserquelle: 'Laserquelle',
+  station: 'Bearbeitungsstation',
   optik: 'Optik',
   scanner: 'Scanner',
   achsen: 'Achsen',
@@ -20,6 +21,30 @@ export const COMPONENT_TYPE_LABEL: Record<ComponentType, string> = {
   messgeraet: 'Messgerät',
   sonstiges: 'Sonstiges',
 };
+
+export const STATUS_LABEL: Record<BetriebsStatus, string> = {
+  betriebsbereit: 'betriebsbereit',
+  'nicht-aufgebaut': 'nicht aufgebaut',
+  'justage-noetig': 'Justage nötig',
+  unbekannt: 'unbekannt',
+};
+
+/** Kurzsymbol je Status (Matrix, Listen); Bedeutung zusätzlich als Text/aria-label. */
+export const STATUS_SYMBOL: Record<BetriebsStatus, string> = {
+  betriebsbereit: '✓',
+  'nicht-aufgebaut': '✕',
+  'justage-noetig': '⚙',
+  unbekannt: '?',
+};
+
+export const STATION_ART_LABEL: Record<StationArt, string> = {
+  scanner: 'Scanner',
+  schneidkopf: 'Schneidkopf',
+  'feste-optik': 'Feste Optik',
+};
+
+/** Symbol für unbestätigte Zahlenwerte. */
+export const UNBESTAETIGT_SYMBOL = '⚠︎';
 
 export const LIT_GROESSE_LABEL: Record<LitGroesse, string> = {
   Fth: 'Schwellfluenz F_th',

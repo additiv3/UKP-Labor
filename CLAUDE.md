@@ -32,6 +32,8 @@ Deployment: GitHub Actions → GitHub Pages (`base` in `vite.config.ts` = Repo-N
 - `additiv3/UKP-Labor` (öffentlich): Auslieferung über GitHub Pages. Wird nur bei einem Release aktualisiert:
   Code-Stand aus dem privaten Repo übernehmen, Version taggen, Pages-Workflow läuft dort.
 - Beide Repos bei jedem Release auf denselben Stand bringen, damit das private Repo nicht veraltet.
+- **Ausnahme `daten/`** (Anlagen-Importdatei `daten/anlagen-import.json`, Datenblätter): nur im privaten Repo, nie ins
+  öffentliche übernehmen, nie in `public/` oder `src/` einbinden.
 
 ## Dokumentation (vor der Arbeit lesen)
 - `docs/01_anforderungen.md` — was die App können soll

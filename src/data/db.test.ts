@@ -59,7 +59,7 @@ describe('Repository-Abfragen', () => {
     const { systemsRepo, componentsRepo, removeSystemCascade } = await import('./repos');
     const s = await systemsRepo.create({ name: 'Anlage A' });
     await componentsRepo.create({ systemId: s.id, typ: 'optik', name: 'F-Theta', params: { brennweite: 0.1 } });
-    await componentsRepo.create({ systemId: s.id, typ: 'laserquelle', name: 'Laser', params: { wellenlaengen: [1030e-9] } });
+    await componentsRepo.create({ systemId: s.id, typ: 'laserquelle', name: 'Laser', params: { wellenlaengen: [{ id: 'w1', lambda: 1030e-9 }] } });
     expect((await componentsRepo.bySystem(s.id)).map((c) => c.name)).toEqual(['F-Theta', 'Laser']);
     await removeSystemCascade(s.id);
     expect(await componentsRepo.bySystem(s.id)).toHaveLength(0);

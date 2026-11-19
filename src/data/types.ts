@@ -27,6 +27,7 @@ export interface System extends Base {
 
 export const COMPONENT_TYPES = [
   'laserquelle',
+  'station',
   'optik',
   'scanner',
   'achsen',
@@ -37,12 +38,46 @@ export const COMPONENT_TYPES = [
 ] as const;
 export type ComponentType = (typeof COMPONENT_TYPES)[number];
 
-export interface LaserParams {
+/** Betriebszustand einer Komponente oder eines Strahlengangs. Fehlt er, gilt „unbekannt“. */
+export const BETRIEBS_STATUS = ['betriebsbereit', 'nicht-aufgebaut', 'justage-noetig', 'unbekannt'] as const;
+export type BetriebsStatus = (typeof BETRIEBS_STATUS)[number];
+
+/** Herkunft eines Zahlenwerts. */
+export interface Beleg {
+  /** true = Wert ist nicht durch Datenblatt/Messung bestätigt (Anzeige mit Symbol) */
+  unbestaetigt?: boolean;
+  /** z. B. „Carbide_….pdf, S. 3“ */
+  quelle?: string;
+}
+/** Belege je Feldname des umgebenden Objekts (z. B. `pMax`). */
+export type Belege = Record<string, Beleg>;
+
+/** Spektralbereich, wenn keine genaue Wellenlänge bekannt ist bzw. als Gruppierung. */
+export const BANDS = ['IR', 'VIS', 'UV'] as const;
+export type Band = (typeof BANDS)[number];
+
+/** Eine Wellenlänge einer Laserquelle (Grundwelle oder Harmonische) mit eigenen Grenzwerten. */
+export interface Wellenlaenge {
+  /** innerhalb der Laserquelle eindeutig, stabil (Verweis aus Strahlengängen) */
+  id: string;
   /** m */
-  wellenlaengen: number[];
+  lambda?: number;
+  /** z. B. „Grundwelle“, „2. Harmonische (SHG)“ */
+  bezeichnung?: string;
   /** W */
   pMax?: number;
   /** J */
+  ePulsMax?: number;
+  m2?: number;
+  notiz?: string;
+  belege?: Belege;
+}
+
+export interface LaserParams {
+  wellenlaengen: Wellenlaenge[];
+  /** W — gesamt bzw. Grundwelle; gilt, wenn die Wellenlänge keinen eigenen Wert hat */
+  pMax?: number;
+  /** J — gesamt bzw. Grundwelle */
   ePulsMax?: number;
   /** Hz */
   fRepMin?: number;
@@ -55,6 +90,42 @@ export interface LaserParams {
   rohstrahlRadius?: number;
   burst?: boolean;
   burstInfo?: string;
+  belege?: Belege;
+}
+
+export const STATION_ARTEN = ['scanner', 'schneidkopf', 'feste-optik'] as const;
+export type StationArt = (typeof STATION_ARTEN)[number];
+
+/** Weg einer Wellenlänge einer Laserquelle zu einer Bearbeitungsstation. */
+export interface Strahlengang {
+  /** innerhalb der Station eindeutig */
+  id: string;
+  /** Komponenten-ID der Laserquelle */
+  laserId?: string;
+  /** `Wellenlaenge.id` der Laserquelle */
+  wellenlaengeId?: string;
+  /** Spektralbereich, falls die Wellenlänge nicht zugeordnet ist */
+  band?: Band;
+  status?: BetriebsStatus;
+  /** m — Fokusradius (1/e²) an dieser Station */
+  w0?: number;
+  notiz?: string;
+  belege?: Belege;
+}
+
+/** Bearbeitungsstation (Scanner, Schneidkopf, feste Optik) mit ihren Strahlengängen. */
+export interface StationParams {
+  art?: StationArt;
+  /** zugeordnete Laserquellen (Komponenten-IDs derselben Anlage) */
+  laserIds: string[];
+  strahlengaenge: Strahlengang[];
+  /** m */
+  brennweite?: number;
+  /** Objektiv bzw. Fokussieroptik als Text (Hersteller, Typ) */
+  objektiv?: string;
+  /** m (Kantenlänge) */
+  feldgroesse?: number;
+  belege?: Belege;
 }
 
 export type OptikTyp = 'f-theta' | 'linse' | 'objektiv';
@@ -69,6 +140,7 @@ export interface OptikParams {
   w0Datenblatt?: number;
   /** m (Kantenlänge) */
   feldgroesse?: number;
+  belege?: Belege;
 }
 
 export interface ScannerParams {
@@ -78,6 +150,7 @@ export interface ScannerParams {
   feldgroesse?: number;
   /** m */
   apertur?: number;
+  belege?: Belege;
 }
 
 export interface AchsenParams {
@@ -85,6 +158,7 @@ export interface AchsenParams {
   verfahrwege?: string;
   /** m */
   genauigkeit?: number;
+  belege?: Belege;
 }
 
 export interface FreitextParams {
@@ -99,10 +173,13 @@ interface ComponentBase extends Base {
   /** Pfad/Text, keine Dateien */
   datenblatt?: string;
   notizen?: string;
+  /** fehlt → „unbekannt“ */
+  status?: BetriebsStatus;
 }
 
 export type Component =
   | (ComponentBase & { typ: 'laserquelle'; params: LaserParams })
+  | (ComponentBase & { typ: 'station'; params: StationParams })
   | (ComponentBase & { typ: 'optik'; params: OptikParams })
   | (ComponentBase & { typ: 'scanner'; params: ScannerParams })
   | (ComponentBase & { typ: 'achsen'; params: AchsenParams })

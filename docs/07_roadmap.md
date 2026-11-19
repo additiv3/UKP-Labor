@@ -13,7 +13,8 @@ Status: ☐ offen · ◐ in Arbeit · ☑ fertig. Nach jedem Meilenstein aktuali
 | 0.7 | Notizen/Tagebuch mit Markdown/KaTeX, Verlinkung, Formelsammlung | ☑ |
 | 0.8 | D²-Fit und Inkubationsfit im Rechner | ☑ |
 | 0.9 | Druckansicht Versuch + Reihe, Burst-Rechner, Burst im Snapshot (Formelversion 1.1), Android-Check | ☑ |
-| 0.10 | Wärmeakkumulation: modellfreie Kenngrößen, Werkstofffeld c_p, optional Akkumulationsmodell nach bestätigter Quelle | ☐ |
+| 0.10 | Anlagenmodul: mehrere Laser und Bearbeitungsstationen je Anlage, Wellenlängen mit eigenen Grenzwerten, Strahlengänge, Status, Belege (unbestätigt/Quelle), Übersicht Stationen × Wellenlängen; Datenschema 2; private Importdatei der Laboranlagen | ☑ |
+| 0.11 | Wärmeakkumulation: modellfreie Kenngrößen, Werkstofffeld c_p, optional Akkumulationsmodell nach bestätigter Quelle | ☐ |
 
 Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entstehen.
 
@@ -148,6 +149,25 @@ Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entsteh
 - **Android:** eigenes maskable-Icon (Motiv in der sicheren Zone), Checkliste in `docs/09_android-check.md`.
 - „Aus Rechner“ in der Reihe nutzt jetzt dieselbe Eingabefunktion wie der Rechner (`calcDeriveInput`).
 
+## Stand 0.10 (umgesetzt 2026-11-19)
+- **Datenschema 2** (Dexie-Version 2, Export `schemaVersion: 2`). Migration als reine Funktion
+  (`src/core/exchange/migrate.ts`), genutzt von der Datenbank-Migration **und** beim Import älterer Dateien: Laser-Wellenlängen
+  `number[]` → `[{ id: 'w1', lambda }, …]`. IDs deterministisch, `updatedAt` bleibt unverändert, damit alle Geräte denselben
+  Stand erzeugen und der Abgleich nicht anschlägt. Tests: `migrate.test.ts`, `migration.test.ts` (echte v1-Datenbank).
+- **Laserquelle:** Wellenlängen als Liste (Grundwelle, Harmonische) mit eigener max. Leistung, Pulsenergie und M²; Werte der
+  Laserquelle gelten, wo die Wellenlänge keinen eigenen hat (Grenzwertwarnung und Vorbelegung im Rechner/Logbuch je λ).
+- **Neuer Komponententyp „Bearbeitungsstation“** (Scanner | Schneidkopf | feste Optik): zugeordnete Laserquellen,
+  Brennweite, Objektiv (Text), Feldgröße, Strahlengänge (Laser + Wellenlänge bzw. Spektralbereich, Status, w₀, Notiz).
+- **Status** für jede Komponente und jeden Strahlengang: betriebsbereit · nicht aufgebaut · Justage nötig · unbekannt
+  (fehlend = unbekannt). Anzeige als Plakette mit Symbol (✓ ✕ ⚙ ?) und Text.
+- **Belege:** Jeder Zahlenwert kann als „unbestätigt“ markiert werden (⚠︎ im Feldnamen) und hat eine optionale Quelle;
+  bearbeitbar über „Belege bearbeiten“, sonst als Hinweis unter dem Feld.
+- **Anlagenansicht:** Übersicht Stationen × Spektralbereich (IR/VIS/UV, „λ ?“ für offene Zuordnung) mit Status je Strahlengang;
+  passt ohne seitliches Scrollen auf 375 px.
+- **Importdatei `daten/anlagen-import.json`** (nur privates Repo): WSMH, MM200, GFH Evo, GFH GL.compact II, ACSYS Multishift;
+  Werte aus `daten/datenblaetter/` mit Quelle (Datei, Seite). Test `anlagenImport.test.ts` prüft Gültigkeit, Quelle je
+  Zahlenwert, Verweise und idempotenten Import (wird übersprungen, wenn die Datei fehlt).
+
 ## Plan 0.9 (festgelegt 2026-11-16)
 - **Druckansicht:** „Drucken“ im Versuch (Kopfdaten, alle Parameter, abgeleitete Werte aus dem Snapshot mit Formelversion,
   Bemerkung, Tags) und in der Reihe (kompakte Tabelle: ID, Datum, Kernparameter, F₀, Status). Helles Layout per
@@ -159,13 +179,24 @@ Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entsteh
 - **Snapshot:** Burst fließt in die abgeleiteten Werte ein → `FORMEL_VERSION` 1.0 → 1.1. Alte Snapshots bleiben unverändert.
 - **Android-Check:** Emulation in Chrome (Installieren, Zahlenfelder, Export/Teilen, Layout) + Checkliste fürs echte Gerät.
 
-## Plan 0.10
+## Plan 0.11
 - Kenngrößen ohne Modellannahme: Pulsperiode, thermische Diffusionslänge während τ und zwischen Pulsen, Vergleich mit w₀/Δx.
 - Werkstofffeld c_p (mit Quelle), κ = λ/(ρ·c_p) berechnet.
 - Akkumulationsmodell (z. B. Weber et al. 2014, Bauer et al. 2015) nur nach Bestätigung der Formel aus der Primärquelle;
   Konvention der Diffusionslänge (√(κτ) vs. 2√(κτ)) dabei festlegen.
 
 ## Entscheidungen
+- **Belege als Feldmap statt Wert-Objekte** (`belege: { pMax: { unbestaetigt, quelle } }` neben den Zahlen): Rechenkern,
+  Rechner und Grenzwerte lesen weiter einfache Zahlen; nur die Anlagen-UI kennt die Belege.
+- **Spektralbereich aus λ:** UV < 400 nm ≤ VIS < 780 nm ≤ IR. Strahlengänge ohne bekannte Wellenlänge können einen Bereich
+  direkt tragen; ganz ohne Angabe erscheinen sie in der Spalte „λ ?“.
+- **Strahlengang verweist auf die Wellenlänge per ID** (stabil innerhalb der Laserquelle), nicht per Zahlenwert, damit eine
+  Korrektur von λ (z. B. 342 → 343 nm) die Zuordnung nicht bricht.
+- **Grenzangaben aus Datenblättern** („≥ 6 W“, „< 290 fs“, „M² ≤ 1,2“) werden als Zahl gespeichert, die Art der Angabe und
+  ggf. Messwerte stehen in der Quelle.
+- **Importdatei mit Zeitstempel 00:00 UTC des Erstellungstags:** Änderungen in der App sind danach immer neuer und werden
+  bei erneutem Import nicht überschrieben (last-writer-wins). UUIDs der Importdatei sind deterministisch (aus festen
+  Schlüsseln), ein Neuerzeugen ändert sie nicht.
 - **Paketversionen:** TypeScript bleibt auf 6.0.x, weil typescript-eslint TypeScript 7 noch nicht unterstützt.
 - **Pages-Workflow nur im öffentlichen Repo:** `pages.yml` liegt auch im privaten Repo (damit der Code-Stand identisch ist),
   der Job läuft aber nur, wenn `github.repository == 'additiv3/UKP-Labor'`. Auslöser: Push auf `main` oder manuell (Tags nicht: die Umgebung `github-pages` erlaubt nur `main`).
