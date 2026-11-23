@@ -1,6 +1,6 @@
 import { FORMEL_VERSION } from '../physics/version';
 import { describe, expect, it } from 'vitest';
-import type { Experiment, Material, Series } from '../../data/types';
+import type { Component, Experiment, Material, Sample, Series, Versuchsart } from '../../data/types';
 import { buildExport, exportFileName, fileSafe, serializeExport } from './exportJson';
 import { buildCsv, csvField, csvNumber, CSV_COLUMNS } from './exportCsv';
 import { planMerge, totalCounts } from './importMerge';
@@ -22,6 +22,12 @@ const exp = (o: Partial<Experiment> = {}): Experiment => ({
   materialId: uid(2), params: { pAvg: 10, fRep: 200e3, w0: 13.114e-6, v: 1, hatch: 10e-6, lambda: 1030e-9, tau: 900e-15 },
   tags: ['schwelle', 'si'], status: 'durchgefuehrt', ...o,
 });
+const sample = (o: Partial<Sample> = {}): Sample => ({
+  id: uid(40), createdAt: T0, updatedAt: T0, deviceId: 'a', probenId: 'FS-001', materialId: uid(2), ...o,
+});
+const art = (o: Partial<Versuchsart> = {}): Versuchsart => ({
+  id: uid(50), createdAt: T0, updatedAt: T0, deviceId: 'a', kuerzel: 'DRL', name: 'Bohren', ...o,
+});
 const data = (o: Partial<ExportData>): ExportData => ({ ...emptyData(), ...o });
 
 describe('JSON-Export', () => {
@@ -34,7 +40,7 @@ describe('JSON-Export', () => {
     expect(f.formelVersion).toBe(FORMEL_VERSION);
     expect(f.exportedAt).toBe(T1);
     expect(f.data.experiments).toHaveLength(2);
-    expect(Object.keys(f.data)).toEqual(['systems', 'components', 'materials', 'litValues', 'samples', 'series', 'experiments', 'notes']);
+    expect(Object.keys(f.data)).toEqual(['systems', 'components', 'materials', 'litValues', 'samples', 'versuchsarten', 'series', 'experiments', 'notes']);
     expect(exportFileName('iPhone 15', new Date(2026, 10, 13))).toBe('20261113_ukp-labor_iphone-15.json');
     expect(exportFileName('', new Date(2026, 0, 2), 'csv')).toBe('20260102_ukp-labor_geraet.csv');
     expect(fileSafe('Laptop Büro/Groß')).toBe('laptop-buro-gross');
@@ -166,6 +172,37 @@ describe('Merge-Regeln', () => {
   });
 });
 
+describe('Merge Schema 3', () => {
+  const now = new Date('2026-11-20T08:00:00.000Z');
+  it('gleiche probenId, andere UUID → importierte Probe bekommt -K1', () => {
+    const local = data({ samples: [sample()] });
+    const p = planMerge(local, data({ samples: [sample({ id: uid(41) }), sample({ id: uid(42), probenId: 'FS-002' })] }), { now, deviceId: 'hier' });
+    expect(p.probenConflicts).toEqual([{ wert: 'FS-001', umbenanntIn: 'FS-001-K1', id: uid(41), lokalId: uid(40) }]);
+    expect(p.puts.samples.find((s) => s.id === uid(41))).toMatchObject({ probenId: 'FS-001-K1', updatedAt: now.toISOString(), deviceId: 'hier' });
+    expect(p.puts.samples.find((s) => s.id === uid(42))!.probenId).toBe('FS-002');
+  });
+  it('gleiches Versuchsart-Kürzel, andere UUID → importierte Art bekommt K1 ohne Bindestrich', () => {
+    const p = planMerge(data({ versuchsarten: [art()] }), data({ versuchsarten: [art({ id: uid(51), name: 'Bohren (Laptop)' })] }), { now });
+    expect(p.artConflicts).toEqual([{ wert: 'DRL', umbenanntIn: 'DRLK1', id: uid(51), lokalId: uid(50) }]);
+    expect(p.puts.versuchsarten[0]!.kuerzel).toBe('DRLK1');
+    // gleiche UUID (z. B. Seed-Art) ist kein Konflikt
+    expect(planMerge(data({ versuchsarten: [art()] }), data({ versuchsarten: [art({ updatedAt: T1, name: 'neu' })] })).artConflicts).toEqual([]);
+  });
+  it('importierte Versuche werden idFixiert, ohne neuen Zeitstempel', () => {
+    const local = data({ experiments: [exp(), exp({ id: uid(12), versuchsId: 'B1-Si-002' })] });
+    const incoming = data({ experiments: [exp(), exp({ id: uid(12), versuchsId: 'B1-Si-002', updatedAt: T1 }), exp({ id: uid(13), versuchsId: 'B1-Si-003' })] });
+    const p = planMerge(local, incoming);
+    expect(p.puts.experiments.map((e) => [e.id, e.idFixiert, e.updatedAt])).toEqual([
+      [uid(12), true, T1],
+      [uid(13), true, T0],
+    ]);
+    // unverändert, aber in der Datei → lokal festschreiben; zählt nicht als Änderung
+    expect(p.fixieren).toEqual([uid(10)]);
+    expect(planMerge(data({ experiments: [exp()] }), data({ experiments: [exp()] }))).toMatchObject({ empty: true, fixieren: [uid(10)] });
+    expect(planMerge(data({ experiments: [exp({ idFixiert: true })] }), data({ experiments: [exp()] })).fixieren).toEqual([]);
+  });
+});
+
 describe('CSV-Export', () => {
   it('Kopf, BOM, Trennzeichen, Einheiten, Dezimalpunkt', () => {
     const csv = buildCsv(data({ series: [series()], materials: [mat()], experiments: [exp({ bemerkung: 'Rand; "ausgefranst"\nzweite Zeile' }), exp({ id: uid(11), deleted: true })] }));
@@ -173,13 +210,32 @@ describe('CSV-Export', () => {
     const lines = csv.slice(1).split('\r\n');
     expect(lines[0]).toBe(CSV_COLUMNS.join(';'));
     expect(lines[0]).toBe(
-      'versuchsId;datum;reihe;material;probe;anlage;laser;optik;lambda_nm;tau_fs;pAvg_W;ePuls_uJ;fRep_kHz;transmission;w0_um;w0Quelle;fokuslage_um;v_mm_s;pulsabstand_um;hatch_um;nPulse;ueberfahrten;F0_J_cm2;OL;N2D;burstN;fBurst_MHz;F0Sub_J_cm2;strategie;atmosphaere;tags;status;bemerkung;id;updatedAt',
+      'versuchsId;art;datum;reihe;material;probe;probenFeld;anlage;station;laser;optik;lambda_nm;tau_fs;pAvg_W;ePuls_uJ;fRep_kHz;transmission;w0_um;w0Quelle;w0Beleg;fokuslage_um;v_mm_s;pulsabstand_um;hatch_um;nPulse;ueberfahrten;F0_J_cm2;OL;N2D;burstN;fBurst_MHz;F0Sub_J_cm2;strategie;atmosphaere;tags;status;bemerkung;id;updatedAt',
     );
     const body = csv.slice(1 + lines[0]!.length + 2);
-    expect(body.startsWith('B1-Si-001;2026-11-01;B1;Silizium;;;;;1030;900;10;50;200;;13.114;;;1000;5;10;;;18.50')).toBe(true);
+    expect(body.startsWith('B1-Si-001;;2026-11-01;B1;Silizium;;;;;;;1030;900;10;50;200;;13.114;;;;1000;5;10;;;18.50')).toBe(true);
     expect(body).toContain('"Rand; ""ausgefranst""\nzweite Zeile"');
     expect(body).toContain(';schwelle,si;durchgefuehrt;');
     expect(body).not.toContain(uid(11));
+  });
+  it('Art, Proben-ID, Probenfeld, Station, w₀-Beleg', () => {
+    const station = { id: uid(60), createdAt: T0, updatedAt: T0, deviceId: 'a', systemId: uid(61), typ: 'station', name: 'Scanner 1', params: { laserIds: [], strahlengaenge: [] } } as Component;
+    const e = exp({
+      versuchsId: 'V0-ABL-001', versuchsartId: uid(50), sampleId: uid(40), probenFeld: 'F01', stationId: uid(60),
+      params: { ...exp().params, w0Quelle: 'gemessen', w0Beleg: 'K-SPOT-001' },
+    });
+    const csv = buildCsv(data({ versuchsarten: [art({ kuerzel: 'ABL' })], samples: [sample({ bezeichnung: 'Wafer 4"' })], components: [station], experiments: [e] }));
+    const [head, row] = csv.slice(1).split('\r\n');
+    const cols = head!.split(';');
+    const cells = row!.split(';');
+    const cell = (c: string) => cells[cols.indexOf(c)];
+    expect(cols.indexOf('art')).toBe(cols.indexOf('versuchsId') + 1);
+    expect(cell('art')).toBe('ABL');
+    expect(cell('probe')).toBe('FS-001');
+    expect(cell('probenFeld')).toBe('F01');
+    expect(cell('station')).toBe('Scanner 1');
+    expect(cell('w0Quelle')).toBe('gemessen');
+    expect(cell('w0Beleg')).toBe('K-SPOT-001');
   });
   it('Burst-Spalten', () => {
     const e = exp();

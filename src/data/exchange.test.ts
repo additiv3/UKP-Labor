@@ -36,7 +36,10 @@ describe('Export/Import mit Datenbank', () => {
     expect(plan.counts.experiments.neu).toBe(2);
     expect(plan.counts.materials.unveraendert).toBe(12);
     await applyMergePlan(plan);
-    expect(await readAllData()).toEqual(before);
+    // Importierte Versuche haben das Gerät per Export verlassen → Versuchs-ID fest; sonst identisch
+    const after = await readAllData();
+    expect(after.experiments.every((e) => e.idFixiert === true)).toBe(true);
+    expect({ ...after, experiments: after.experiments.map((e) => ({ ...e, idFixiert: undefined })) }).toEqual(before);
     // Tombstone bleibt erhalten
     expect((await experimentsRepo.get(gone.id))?.deleted).toBe(true);
     expect((await countRecords()).experiments).toBe(1);

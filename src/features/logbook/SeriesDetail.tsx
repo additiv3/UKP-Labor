@@ -4,24 +4,33 @@ import { derive } from '../../core/physics/derive';
 import { calcDeriveInput, normalizeCalcState } from '../calculator/state';
 import { calcToExperiment } from '../calculator/toExperiment';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { experimentsRepo, removeSeriesCascade, seriesRepo } from '../../data/repos';
-import type { Series, SeriesStatus } from '../../data/types';
+import { experimentsRepo, removeSeriesCascade, seriesRepo, versuchsartenRepo } from '../../data/repos';
+import type { Series, SeriesStatus, Versuchsart } from '../../data/types';
 import { compareByVersuchsId } from '../../core/logbook';
-import { TextArea, TextField } from '../../components/fields';
+import { SelectField, TextArea, TextField } from '../../components/fields';
 import { Segmented } from '../../components/Segmented';
 import { useAutosave } from '../../components/useAutosave';
 import { SaveBadge } from '../../components/SaveBadge';
 import { BackLink } from '../../components/MasterDetail';
 import { ExperimentList } from './ExperimentList';
-import { SERIES_STATUS_LABEL } from './labels';
-import { createEmptyExperiment, createFromTransfer, duplicate } from './actions';
+import { SERIES_STATUS_LABEL, artLabel } from './labels';
+import { createEmptyExperiment, createFromTransfer, defaultArtId, duplicate } from './actions';
+import { useArtAbfrage } from './useArtAbfrage';
 import { useLookups } from './useLookups';
 import { Mentions } from '../notes/Mentions';
 
-function SeriesForm({ series, codeTaken }: { series: Series; codeTaken: (code: string) => boolean }) {
+function SeriesForm({ series, arten, codeTaken }: { series: Series; arten: Versuchsart[]; codeTaken: (code: string) => boolean }) {
   const { draft, change, status, error } = useAutosave(
     series,
-    (d) => seriesRepo.update(d.id, { code: d.code, titel: d.titel, ziel: d.ziel, status: d.status, notizen: d.notizen }),
+    (d) =>
+      seriesRepo.update(d.id, {
+        code: d.code,
+        titel: d.titel,
+        ziel: d.ziel,
+        status: d.status,
+        notizen: d.notizen,
+        standardVersuchsartId: d.standardVersuchsartId,
+      }),
     (d) =>
       d.code.trim() === ''
         ? 'Code fehlt'
@@ -47,6 +56,14 @@ function SeriesForm({ series, codeTaken }: { series: Series; codeTaken: (code: s
         />
         <TextField label="Titel" value={draft.titel} placeholder="z. B. Schwelle Si" onChange={(v) => change((d) => ({ ...d, titel: v ?? '' }))} />
       </div>
+      <SelectField
+        label="Standard-Versuchsart"
+        empty="– keine (bei jedem neuen Versuch fragen) –"
+        value={draft.standardVersuchsartId}
+        options={arten.map((a) => [a.id, artLabel(a)] as const)}
+        hint="Gilt für neue Versuche dieser Reihe (Teil der Versuchs-ID)."
+        onChange={(v) => change((d) => ({ ...d, standardVersuchsartId: v }))}
+      />
       <div className="field">
         <span>Status</span>
         <Segmented<SeriesStatus>
@@ -69,22 +86,36 @@ export function SeriesDetail() {
   const series = useLiveQuery(() => seriesRepo.get(seriesId), [seriesId]);
   const others = useLiveQuery(async () => (await seriesRepo.listSorted()).filter((s) => s.id !== seriesId), [seriesId]);
   const experiments = useLiveQuery(() => experimentsRepo.bySeries(seriesId), [seriesId]);
+  const arten = useLiveQuery(() => versuchsartenRepo.listSorted(), []);
   const lookups = useLookups();
+  const abfrage = useArtAbfrage();
 
-  if (series === undefined || experiments === undefined || others === undefined || !lookups) return null;
+  if (series === undefined || experiments === undefined || others === undefined || !arten || !lookups) return null;
   if (series.deleted) return <p className="muted">Diese Reihe wurde gelöscht.</p>;
 
   const sorted = [...experiments].sort(compareByVersuchsId);
   const last = [...experiments].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
 
-  const addEmpty = async () => navigate(`/logbuch/v/${(await createEmptyExperiment(seriesId)).id}`);
-  const addDup = async () => last && navigate(`/logbuch/v/${(await duplicate(last)).id}`);
-  const addFromCalc = async () => {
-    const st = normalizeCalcState(await getSetting('calculator'));
-    const d = derive(calcDeriveInput(st));
-    const e = await createFromTransfer(seriesId, calcToExperiment(st, d));
-    navigate(`/logbuch/v/${e.id}`);
+  /** Mit der Standard-Art der Reihe anlegen, sonst vorher nach der Art fragen. */
+  const withArt = async (title: string, run: (artId: string) => Promise<void>, preferred?: string) => {
+    const art = await defaultArtId(seriesId, preferred);
+    if (art) await run(art);
+    else abfrage.ask(title, run);
   };
+  const addEmpty = () =>
+    withArt('Versuchsart für den neuen Versuch', async (art) => navigate(`/logbuch/v/${(await createEmptyExperiment(seriesId, art)).id}`));
+  const addDup = async () => {
+    if (!last) return;
+    if (last.versuchsartId) navigate(`/logbuch/v/${(await duplicate(last)).id}`);
+    else abfrage.ask(`${last.versuchsId} hat keine Versuchsart – Art für die Kopie`, async (art) => navigate(`/logbuch/v/${(await duplicate(last, art)).id}`));
+  };
+  const addFromCalc = () =>
+    withArt('Versuchsart für den Versuch aus dem Rechner', async (art) => {
+      const st = normalizeCalcState(await getSetting('calculator'));
+      const d = derive(calcDeriveInput(st));
+      const e = await createFromTransfer(seriesId, calcToExperiment(st, d), art);
+      navigate(`/logbuch/v/${e.id}`);
+    });
   const remove = async () => {
     if (!window.confirm(`Reihe „${series.code}“ mit ${experiments.length} Versuchen löschen?`)) return;
     await removeSeriesCascade(seriesId);
@@ -118,6 +149,7 @@ export function SeriesDetail() {
             Drucken
           </Link>
         </div>
+        {abfrage.element && <div className="mt">{abfrage.element}</div>}
         {sorted.length > 0 ? (
           <div className="mt">
             <ExperimentList experiments={sorted} materials={lookups.materials} />
@@ -128,7 +160,7 @@ export function SeriesDetail() {
       </section>
 
       <Mentions refId={series.code} />
-      <SeriesForm key={series.id} series={series} codeTaken={(c) => others.some((o) => o.code === c)} />
+      <SeriesForm key={series.id} series={series} arten={arten} codeTaken={(c) => others.some((o) => o.code === c)} />
 
       <section className="card row wrap">
         <button type="button" className="btn btn-danger" onClick={() => void remove()}>

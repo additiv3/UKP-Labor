@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { experimentsRepo, seriesRepo } from '../../data/repos';
+import { experimentsRepo, seriesRepo, versuchsartenRepo } from '../../data/repos';
 import type { Experiment } from '../../data/types';
 import { buildMatrix, MATRIX_FIELDS, matrixSize, rangeValues, validateAxes, type MatrixAxis, type MatrixField } from '../../core/matrix';
 import { compareByVersuchsId, todayIso } from '../../core/logbook';
@@ -9,7 +9,7 @@ import { findUnit, formatIn, formatNumber, parseNumber, toSI, unitsOf } from '..
 import { NumberListField } from '../../components/fields';
 import { BackLink } from '../../components/MasterDetail';
 import { Segmented } from '../../components/Segmented';
-import { materialKurz } from './actions';
+import { artLabel } from './labels';
 
 interface AxisState extends MatrixAxis {
   unit?: string;
@@ -108,26 +108,28 @@ export function MatrixScreen() {
   const series = useLiveQuery(() => seriesRepo.get(seriesId), [seriesId]);
   const experiments = useLiveQuery(() => experimentsRepo.bySeries(seriesId), [seriesId]);
   const allIds = useLiveQuery(() => experimentsRepo.allVersuchsIds(), []);
+  const arten = useLiveQuery(() => versuchsartenRepo.listSorted(), []);
   const [templateId, setTemplateId] = useState<string>();
+  const [artChoice, setArtChoice] = useState<string>();
   const [axes, setAxes] = useState<AxisState[]>([
     { field: 'ePuls', values: [], rev: 0 },
     { field: 'nPulse', values: [], rev: 0 },
   ]);
   const [datum, setDatum] = useState(todayIso());
   const [busy, setBusy] = useState(false);
-  const tpl = useLiveQuery(async () => {
-    const sorted = [...(experiments ?? [])].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-    const t: Experiment | undefined = templateId === '' ? undefined : (sorted.find((e) => e.id === templateId) ?? sorted[0]);
-    return { t, kurz: await materialKurz(t?.materialId) };
-  }, [experiments, templateId]);
+  if (!series || !experiments || !allIds || !arten) return null;
 
-  if (!series || !experiments || !allIds || !tpl) return null;
-
-  const template = tpl.t ?? { params: {}, tags: [] };
-  const error = validateAxes(axes);
-  const list = error
-    ? []
-    : buildMatrix(template, axes, { existingIds: allIds, seriesId, seriesCode: series.code, materialKurz: tpl.kurz, datum });
+  const sorted = [...experiments].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const tplExp: Experiment | undefined = templateId === '' ? undefined : (sorted.find((e) => e.id === templateId) ?? sorted[0]);
+  const template = tplExp ?? { params: {}, tags: [] };
+  // Art: Auswahl, sonst Art der Vorlage, sonst Standard-Art der Reihe
+  const artId = artChoice ?? tplExp?.versuchsartId ?? series.standardVersuchsartId;
+  const art = arten.find((a) => a.id === artId);
+  const error = validateAxes(axes) ?? (art ? undefined : 'Versuchsart wählen (Teil der Versuchs-ID)');
+  const list =
+    error || !art
+      ? []
+      : buildMatrix(template, axes, { existingIds: allIds, seriesId, seriesCode: series.code, art: { id: art.id, kuerzel: art.kuerzel }, datum });
   const used = axes.filter((a) => a.values.length > 0);
 
   const create = async () => {
@@ -152,11 +154,29 @@ export function MatrixScreen() {
         <div className="two-col">
           <div className="field">
             <label htmlFor="mx-tpl">Vorlage</label>
-            <select id="mx-tpl" value={templateId ?? tpl.t?.id ?? ''} onChange={(e) => setTemplateId(e.target.value)}>
+            <select
+              id="mx-tpl"
+              value={templateId ?? tplExp?.id ?? ''}
+              onChange={(e) => {
+                setTemplateId(e.target.value);
+                setArtChoice(undefined);
+              }}
+            >
               <option value="">– leer (keine Vorlage) –</option>
               {[...experiments].sort(compareByVersuchsId).map((e) => (
                 <option key={e.id} value={e.id}>
                   {e.versuchsId}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="mx-art">Versuchsart</label>
+            <select id="mx-art" value={art?.id ?? ''} onChange={(e) => setArtChoice(e.target.value || undefined)}>
+              <option value="">– wählen –</option>
+              {arten.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {artLabel(a)}
                 </option>
               ))}
             </select>

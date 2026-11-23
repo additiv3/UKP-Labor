@@ -7,8 +7,8 @@ import { experimentSnapshot } from '../logbook';
 import type { ExportData } from './schema';
 
 export const CSV_COLUMNS = [
-  'versuchsId', 'datum', 'reihe', 'material', 'probe', 'anlage', 'laser', 'optik',
-  'lambda_nm', 'tau_fs', 'pAvg_W', 'ePuls_uJ', 'fRep_kHz', 'transmission', 'w0_um', 'w0Quelle', 'fokuslage_um',
+  'versuchsId', 'art', 'datum', 'reihe', 'material', 'probe', 'probenFeld', 'anlage', 'station', 'laser', 'optik',
+  'lambda_nm', 'tau_fs', 'pAvg_W', 'ePuls_uJ', 'fRep_kHz', 'transmission', 'w0_um', 'w0Quelle', 'w0Beleg', 'fokuslage_um',
   'v_mm_s', 'pulsabstand_um', 'hatch_um', 'nPulse', 'ueberfahrten', 'F0_J_cm2', 'OL', 'N2D', 'burstN', 'fBurst_MHz', 'F0Sub_J_cm2',
   'strategie', 'atmosphaere', 'tags', 'status', 'bemerkung', 'id', 'updatedAt',
 ] as const;
@@ -39,11 +39,14 @@ function row(e: Experiment, d: ExportData): string[] {
   const w = e.abgeleitet?.werte ?? experimentSnapshot(p).werte;
   return [
     e.versuchsId,
+    name(d.versuchsarten, e.versuchsartId, (a) => a.kuerzel),
     e.datum,
     name(d.series, e.seriesId, (s) => s.code),
     name(d.materials, e.materialId, (m) => m.name),
-    name(d.samples, e.sampleId, (s) => s.bezeichnung),
+    name(d.samples, e.sampleId, (s) => s.probenId),
+    e.probenFeld ?? '',
     name(d.systems, e.systemId, (s) => s.name),
+    name(d.components, e.stationId, (c) => c.name),
     name(d.components, e.laserId, (c) => c.name),
     name(d.components, e.optikId, (c) => c.name),
     csvNumber(p.lambda, 1e9),
@@ -54,6 +57,7 @@ function row(e: Experiment, d: ExportData): string[] {
     csvNumber(p.transmission),
     csvNumber(p.w0, 1e6),
     p.w0Quelle ?? '',
+    p.w0Beleg ?? '',
     csvNumber(p.fokuslage, 1e6),
     csvNumber(p.v, 1e3),
     csvNumber(p.pulsabstand ?? w.dx, 1e6),

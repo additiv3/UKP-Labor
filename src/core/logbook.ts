@@ -68,28 +68,41 @@ export function parseTags(input: string): string[] {
   return out;
 }
 
+/** Versuchsart für eine neue Versuchs-ID (UUID + Kürzel). */
+export interface ArtRef {
+  id: string;
+  kuerzel: string;
+}
+
 export interface DuplicateContext {
-  /** alle vorhandenen Versuchs-IDs (für die laufende Nummer) */
+  /** alle vorhandenen Versuchs-IDs inkl. gelöschter (für die laufende Nummer) */
   existingIds: Iterable<string>;
   seriesCode: string;
-  materialKurz: string;
+  /** Art der Vorlage bzw. abgefragte Art, falls die Vorlage (alt) keine hat */
+  art: ArtRef;
   datum?: string;
   status?: ExperimentStatus;
 }
 
-type NewExperiment = Omit<Experiment, 'id' | 'createdAt' | 'updatedAt' | 'deviceId' | 'deleted'>;
+type NewExperiment = Omit<Experiment, 'id' | 'createdAt' | 'updatedAt' | 'deviceId' | 'deleted' | 'idFixiert'>;
 
-/** Kopie als Vorlage: gleiche Parameter, Anlage, Probe und Tags; neue ID, heutiges Datum, ohne Bemerkung. */
+/**
+ * Kopie als Vorlage: gleiche Art, Parameter, Anlage, Probe und Tags; neue ID, heutiges Datum, ohne Bemerkung und
+ * ohne Probenfeld (jeder Versuch liegt auf einem eigenen Feld).
+ */
 export function duplicateExperiment(src: Experiment, ctx: DuplicateContext): NewExperiment {
   const params = structuredClone(src.params);
   return {
-    versuchsId: nextVersuchsId(ctx.existingIds, ctx.seriesCode, ctx.materialKurz || 'X'),
+    versuchsId: nextVersuchsId(ctx.existingIds, ctx.seriesCode, ctx.art.kuerzel),
+    versuchsartId: ctx.art.id,
     seriesId: src.seriesId,
     datum: ctx.datum ?? todayIso(),
     systemId: src.systemId,
     laserId: src.laserId,
     optikId: src.optikId,
     scannerId: src.scannerId,
+    stationId: src.stationId,
+    strahlengangId: src.strahlengangId,
     sampleId: src.sampleId,
     materialId: src.materialId,
     params,
@@ -139,7 +152,7 @@ export function compareExperiments(a: Experiment, b: Experiment): number {
   return b.datum.localeCompare(a.datum) || b.versuchsId.localeCompare(a.versuchsId, 'de', { numeric: true });
 }
 
-/** Sortierung innerhalb einer Reihe: Versuchs-ID aufsteigend (B1-Si-001, -002 …). */
+/** Sortierung innerhalb einer Reihe: Versuchs-ID aufsteigend (B1-ABL-001, -002 …). */
 export function compareByVersuchsId(a: Experiment, b: Experiment): number {
   return a.versuchsId.localeCompare(b.versuchsId, 'de', { numeric: true });
 }

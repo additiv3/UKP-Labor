@@ -14,7 +14,7 @@ beforeEach(async () => {
 describe('Dexie-Schema', () => {
   it('legt alle Tabellen an', () => {
     expect(db.tables.map((t) => t.name).sort()).toEqual(
-      ['components', 'experiments', 'litValues', 'materials', 'notes', 'samples', 'series', 'settings', 'systems'].sort(),
+      ['components', 'experiments', 'litValues', 'materials', 'notes', 'samples', 'series', 'settings', 'systems', 'versuchsarten'].sort(),
     );
   });
 
@@ -69,7 +69,7 @@ describe('Repository-Abfragen', () => {
     const { materialsRepo, litValuesRepo, samplesRepo, removeMaterialCascade } = await import('./repos');
     const m = (await materialsRepo.listSorted()).find((x) => x.kurz === 'Si')!;
     await litValuesRepo.create({ materialId: m.id, groesse: 'Fth', wert: 2000, einheit: 'J/cm²', citekey: 'bonse2002' });
-    await samplesRepo.create({ materialId: m.id, bezeichnung: 'Wafer 1' });
+    await samplesRepo.create({ materialId: m.id, probenId: 'Si-001', bezeichnung: 'Wafer 1' });
     expect(await litValuesRepo.byMaterial(m.id)).toHaveLength(1);
     expect(await samplesRepo.byMaterial(m.id)).toHaveLength(1);
     await removeMaterialCascade(m.id);

@@ -15,26 +15,56 @@ export function sanitizeIdPart(s: string): string {
   return s.trim().replace(/[\s-]+/g, '');
 }
 
-/** Versuchs-ID `<Reihe>-<Material>-<lfd. Nr. 3-stellig>`, z. B. `B1-Si-001`. */
-export function formatVersuchsId(reihe: string, material: string, nr: number): string {
-  return `${sanitizeIdPart(reihe)}-${sanitizeIdPart(material)}-${String(nr).padStart(3, '0')}`;
-}
-
 /**
- * Nächste freie laufende Nummer für Präfix `<Reihe>-<Material>` anhand vorhandener Versuchs-IDs.
- * Berücksichtigt nur IDs mit exakt passendem Präfix; Konflikt-Suffixe (`-K1`) werden ignoriert.
+ * Höchste laufende Nummer hinter `prefix` (z. B. `K-SPOT-`). Konflikt-Suffixe (`-K1`) werden ignoriert, die Nummer
+ * dahinter zählt trotzdem. Die Aufrufer übergeben alle IDs inkl. gelöschter und verworfener Datensätze, damit eine Nummer
+ * nie zweimal vergeben wird.
  */
-export function nextLaufnummer(existing: Iterable<string>, reihe: string, material: string): number {
-  const prefix = `${sanitizeIdPart(reihe)}-${sanitizeIdPart(material)}-`;
+function maxNummer(existing: Iterable<string>, prefix: string): number {
   let max = 0;
   for (const id of existing) {
     if (!id.startsWith(prefix)) continue;
     const m = /^(\d+)(?:-K\d+)?$/.exec(id.slice(prefix.length));
     if (m) max = Math.max(max, Number(m[1]));
   }
-  return max + 1;
+  return max;
 }
 
-export function nextVersuchsId(existing: Iterable<string>, reihe: string, material: string): string {
-  return formatVersuchsId(reihe, material, nextLaufnummer(existing, reihe, material));
+const nr3 = (nr: number) => String(nr).padStart(3, '0');
+
+/** Versuchs-ID `<Reihe>-<Art>-<lfd. Nr. 3-stellig>`, z. B. `K-SPOT-001`. */
+export function formatVersuchsId(reihe: string, art: string, nr: number): string {
+  return `${sanitizeIdPart(reihe)}-${sanitizeIdPart(art)}-${nr3(nr)}`;
+}
+
+/** Präfix `<Reihe>-<Art>-` einer Versuchs-ID. */
+export function versuchsIdPrefix(reihe: string, art: string): string {
+  return `${sanitizeIdPart(reihe)}-${sanitizeIdPart(art)}-`;
+}
+
+/** Nächste freie laufende Nummer für Präfix `<Reihe>-<Art>` anhand vorhandener Versuchs-IDs (inkl. gelöschter). */
+export function nextLaufnummer(existing: Iterable<string>, reihe: string, art: string): number {
+  return maxNummer(existing, versuchsIdPrefix(reihe, art)) + 1;
+}
+
+export function nextVersuchsId(existing: Iterable<string>, reihe: string, art: string): string {
+  return formatVersuchsId(reihe, art, nextLaufnummer(existing, reihe, art));
+}
+
+/** Proben-ID `<Werkstoffkürzel>-<lfd. Nr. 3-stellig>`, z. B. `FS-001`. */
+export function formatProbenId(kurz: string, nr: number): string {
+  return `${sanitizeIdPart(kurz)}-${nr3(nr)}`;
+}
+
+/** Nächste freie Proben-ID je Werkstoffkürzel anhand vorhandener Proben-IDs (inkl. gelöschter). */
+export function nextProbenId(existing: Iterable<string>, kurz: string): string {
+  return formatProbenId(kurz, maxNummer(existing, `${sanitizeIdPart(kurz)}-`) + 1);
+}
+
+/** Kürzel einer Versuchsart: 2–6 Zeichen, nur A–Z und 0–9. Fehlertext oder undefined. */
+export function validateArtKuerzel(k: string): string | undefined {
+  if (k === '') return 'Kürzel fehlt';
+  if (!/^[A-Z0-9]+$/.test(k)) return 'Kürzel nur aus A–Z und 0–9 (ohne Bindestrich)';
+  if (k.length < 2 || k.length > 6) return 'Kürzel mit 2 bis 6 Zeichen';
+  return undefined;
 }

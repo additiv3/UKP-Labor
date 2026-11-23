@@ -24,6 +24,7 @@ export function paramRows(p: ExperimentParams): Row[] {
     ['Burst-Info', p.burst?.info, (x: string) => x],
     ['Abschwächung T', p.transmission, pct],
     ['Fokusradius w₀', p.w0, (x: number) => `${formatSI(x, 'm')}${p.w0Quelle ? ` (${W0_QUELLE_LABEL[p.w0Quelle]})` : ''}`],
+    ['Beleg w₀', p.w0Beleg, (x: string) => x],
     ['Strahlqualität M²', p.m2, (x: number) => formatNumber(x)],
     ['Fokuslage z', p.fokuslage, (x: number) => formatSI(x, 'm')],
     ['Scangeschwindigkeit v', p.v, (x: number) => formatIn(x, 'velocity')],

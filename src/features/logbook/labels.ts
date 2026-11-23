@@ -1,4 +1,7 @@
-import type { ExperimentStatus, SeriesStatus, W0Quelle } from '../../data/types';
+import type { ExperimentStatus, SeriesStatus, Versuchsart, W0Quelle } from '../../data/types';
+
+/** Anzeige einer Versuchsart in Auswahllisten: „ABL · Linien-/Flächenabtrag“. */
+export const artLabel = (a: Pick<Versuchsart, 'kuerzel' | 'name'>) => (a.name ? `${a.kuerzel} · ${a.name}` : a.kuerzel);
 
 export const STATUS_LABEL: Record<ExperimentStatus, string> = {
   geplant: 'geplant',
@@ -16,5 +19,6 @@ export const W0_QUELLE_LABEL: Record<W0Quelle, string> = {
   datenblatt: 'Datenblatt',
   berechnet: 'berechnet',
   d2: 'D²-gemessen',
+  gemessen: 'gemessen (Spotmessung)',
   geschaetzt: 'geschätzt',
 };

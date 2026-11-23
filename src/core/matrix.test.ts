@@ -50,9 +50,10 @@ describe('buildMatrix', () => {
   };
   it('fortlaufende IDs, Status geplant, Tag matrix, Snapshot', () => {
     const list = buildMatrix(template, [{ field: 'ePuls', values: [10e-6, 50e-6] }, { field: 'nPulse', values: [1, 10] }], {
-      existingIds: ['B1-Si-001', 'B1-Si-007'], seriesId: 'r', seriesCode: 'B1', materialKurz: 'Si', datum: '2026-11-13',
+      existingIds: ['B1-THR-001', 'B1-THR-007', 'B1-ABL-020'], seriesId: 'r', seriesCode: 'B1', art: { id: 'thr', kuerzel: 'THR' }, datum: '2026-11-13',
     });
-    expect(list.map((e) => e.versuchsId)).toEqual(['B1-Si-008', 'B1-Si-009', 'B1-Si-010', 'B1-Si-011']);
+    expect(list.map((e) => e.versuchsId)).toEqual(['B1-THR-008', 'B1-THR-009', 'B1-THR-010', 'B1-THR-011']);
+    expect(list.every((e) => e.versuchsartId === 'thr')).toBe(true);
     expect(list.every((e) => e.status === 'geplant' && e.datum === '2026-11-13' && e.seriesId === 'r')).toBe(true);
     expect(list[0]!.tags).toEqual(['schwelle', 'matrix']);
     expect(list[3]!.params).toMatchObject({ ePuls: 50e-6, nPulse: 10, fRep: 200e3, strategie: 'Punkte', pulsabstand: 5e-6 });
@@ -64,8 +65,8 @@ describe('buildMatrix', () => {
     expect(template.params.pAvg).toBe(10);
   });
   it('v variiert → fester Pulsabstand der Vorlage entfällt', () => {
-    const [e] = buildMatrix(template, [{ field: 'v', values: [2] }], { existingIds: [], seriesId: 'r', seriesCode: 'B2', materialKurz: '' });
-    expect(e!.versuchsId).toBe('B2-X-001');
+    const [e] = buildMatrix(template, [{ field: 'v', values: [2] }], { existingIds: [], seriesId: 'r', seriesCode: 'B2', art: { id: 'abl', kuerzel: 'ABL' } });
+    expect(e!.versuchsId).toBe('B2-ABL-001');
     expect(e!.params.pulsabstand).toBeUndefined();
     expect(e!.abgeleitet!.werte.dx).toBeCloseTo(10e-6, 12);
   });

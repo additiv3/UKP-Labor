@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { experimentsRepo, seriesRepo } from '../../data/repos';
+import { experimentsRepo, seriesRepo, versuchsartenRepo } from '../../data/repos';
 import type { Derived } from '../../core/physics/derive';
 import { compareByVersuchsId } from '../../core/logbook';
 import { applyTransfer, createFromTransfer } from '../logbook/actions';
 import { calcToExperiment, mergeIntoParams } from './toExperiment';
+import { artLabel } from '../logbook/labels';
 import type { CalcState } from './state';
 
 // Zuletzt gewählte Reihe innerhalb der Sitzung merken
@@ -19,9 +20,11 @@ export function TransferPanel({ state, derived, optikW0Datenblatt }: { state: Ca
   const sid = seriesId ?? series?.[series.length - 1]?.id;
   const experiments = useLiveQuery(() => (sid ? experimentsRepo.bySeries(sid) : Promise.resolve([])), [sid]);
   const [target, setTarget] = useState('neu');
+  const [artChoice, setArtChoice] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const arten = useLiveQuery(() => versuchsartenRepo.listSorted(), []);
 
-  if (!series) return null;
+  if (!series || !arten) return null;
   if (series.length === 0)
     return (
       <section className="card">
@@ -35,13 +38,17 @@ export function TransferPanel({ state, derived, optikW0Datenblatt }: { state: Ca
 
   const transfer = calcToExperiment(state, derived, optikW0Datenblatt);
   const n = Object.keys(transfer.params).length;
+  // Art für einen neuen Versuch: Auswahl, sonst Standard-Art der Reihe
+  const artId = artChoice ?? series.find((s) => s.id === sid)?.standardVersuchsartId;
+  const art = arten.find((a) => a.id === artId);
 
   const go = async () => {
     if (!sid) return;
     setBusy(true);
     try {
       if (target === 'neu') {
-        const e = await createFromTransfer(sid, transfer);
+        if (!art) return;
+        const e = await createFromTransfer(sid, transfer, art.id);
         navigate(`/logbuch/v/${e.id}`);
       } else {
         const e = experiments?.find((x) => x.id === target);
@@ -67,6 +74,7 @@ export function TransferPanel({ state, derived, optikW0Datenblatt }: { state: Ca
               lastSeriesId = e.target.value;
               setSeriesId(e.target.value);
               setTarget('neu');
+              setArtChoice(undefined);
             }}
           >
             {series.map((s) => (
@@ -87,12 +95,25 @@ export function TransferPanel({ state, derived, optikW0Datenblatt }: { state: Ca
             ))}
           </select>
         </div>
+        {target === 'neu' && (
+          <div className="field">
+            <label htmlFor="tr-art">Versuchsart</label>
+            <select id="tr-art" value={art?.id ?? ''} onChange={(e) => setArtChoice(e.target.value || undefined)}>
+              <option value="">– wählen –</option>
+              {arten.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {artLabel(a)}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
       <p className="muted small">
         Übernimmt {n} eingestellte Werte (λ, τ, Leistung bzw. E_p, f_rep, T, M², w₀ mit Quelle, Fokuslage, v, h, N) sowie
         Anlage, Komponenten und Werkstoff aus den Vorlagen. Materialwerte (F_th, δ, S) bleiben im Rechner.
       </p>
-      <button type="button" className="btn btn-primary" disabled={busy || n === 0} onClick={() => void go()}>
+      <button type="button" className="btn btn-primary" disabled={busy || n === 0 || (target === 'neu' && !art)} onClick={() => void go()}>
         {target === 'neu' ? 'Als neuen Versuch anlegen' : 'In Versuch übernehmen'}
       </button>
     </section>

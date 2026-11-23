@@ -8,12 +8,14 @@ import {
   samplesRepo,
   seriesRepo,
   systemsRepo,
+  versuchsartenRepo,
 } from '../../data/repos';
 import type { Experiment, ExperimentParams, ExperimentStatus, W0Quelle } from '../../data/types';
 import { deriveExperiment, experimentSnapshot, formatDateDe, parseTags } from '../../core/logbook';
-import { nextVersuchsId, sanitizeIdPart } from '../../core/ids';
+import { nextVersuchsId, versuchsIdPrefix } from '../../core/ids';
 import { checkLimits } from '../../core/limits';
-import { laserLambdas, laserLimits, laserM2 } from '../../data/equipment';
+import { laserLambdas, laserLimits, laserM2, resolvePath, type LaserComponent, type StationComponent } from '../../data/equipment';
+import { probeLabel } from '../../data/labels';
 import { focusRadius } from '../../core/physics/beam';
 import { FORMULAS } from '../../core/physics/formulas';
 import { formatIn, formatNumber, formatSI, type Quantity } from '../../core/physics/units';
@@ -25,8 +27,9 @@ import { useAutosave } from '../../components/useAutosave';
 import { SaveBadge } from '../../components/SaveBadge';
 import { BackLink } from '../../components/MasterDetail';
 import { asLaser, asOptik, asScanner } from '../calculator/presets';
-import { STATUS_LABEL, W0_QUELLE_LABEL } from './labels';
+import { STATUS_LABEL, W0_QUELLE_LABEL, artLabel } from './labels';
 import { duplicate } from './actions';
+import { useArtAbfrage } from './useArtAbfrage';
 import { Mentions } from '../notes/Mentions';
 
 type P = ExperimentParams;
@@ -64,25 +67,41 @@ function ExperimentForm({ exp }: { exp: Experiment }) {
   const series = useLiveQuery(() => seriesRepo.listSorted(), []);
   const systems = useLiveQuery(() => systemsRepo.listSorted(), []);
   const materials = useLiveQuery(() => materialsRepo.listSorted(), []);
+  const arten = useLiveQuery(() => versuchsartenRepo.listSorted(), []);
+  const abfrage = useArtAbfrage();
+  // Spotmessungen (Art SPOT) als Vorschläge für den w₀-Beleg
+  const spotIds = useLiveQuery(async () => {
+    const spot = (await versuchsartenRepo.listSorted()).filter((a) => a.kuerzel === 'SPOT').map((a) => a.id);
+    return (await experimentsRepo.list())
+      .filter((e) => e.id !== exp.id && e.versuchsartId !== undefined && spot.includes(e.versuchsartId))
+      .map((e) => e.versuchsId)
+      .sort((a, b) => a.localeCompare(b, 'de', { numeric: true }));
+  }, [exp.id]);
 
   // Versuchs-IDs der anderen (nicht gelöschten) Versuche für die Eindeutigkeitsprüfung
   const taken = useLiveQuery(
     async () => new Set((await experimentsRepo.list()).filter((e) => e.id !== exp.id).map((e) => e.versuchsId)),
     [exp.id],
   ) ?? new Set<string>();
+  // alle Versuchs-IDs inkl. gelöschter: eine Nummer wird nie neu vergeben
+  const allIds = useLiveQuery(() => experimentsRepo.allVersuchsIds(), []);
 
   const { draft, change, status, error } = useAutosave<Experiment>(
     exp,
     (d) =>
       experimentsRepo.update(d.id, {
         versuchsId: d.versuchsId,
+        versuchsartId: d.versuchsartId,
         seriesId: d.seriesId,
         datum: d.datum,
         systemId: d.systemId,
         laserId: d.laserId,
         optikId: d.optikId,
         scannerId: d.scannerId,
+        stationId: d.stationId,
+        strahlengangId: d.strahlengangId,
         sampleId: d.sampleId,
+        probenFeld: d.probenFeld,
         materialId: d.materialId,
         params: d.params,
         abgeleitet: experimentSnapshot(d.params),
@@ -109,7 +128,7 @@ function ExperimentForm({ exp }: { exp: Experiment }) {
     [draft.materialId],
   );
 
-  if (!series || !systems || !materials || !components || !samples) return null;
+  if (!series || !systems || !materials || !arten || !allIds || !spotIds || !components || !samples) return null;
 
   const p = draft.params;
   const setP = (patch: Partial<P>) => change((d) => ({ ...d, params: { ...d.params, ...patch } }));
@@ -132,20 +151,48 @@ function ExperimentForm({ exp }: { exp: Experiment }) {
   const laser = asLaser(components.find((c) => c.id === draft.laserId));
   const optik = asOptik(components.find((c) => c.id === draft.optikId));
   const scanner = asScanner(components.find((c) => c.id === draft.scannerId));
-  const material = materials.find((m) => m.id === draft.materialId);
   const seriesCode = series.find((s) => s.id === draft.seriesId)?.code ?? '';
+  const art = arten.find((a) => a.id === draft.versuchsartId);
+  const lasers = components.filter((c): c is LaserComponent => c.typ === 'laserquelle');
+  const station = components.find((c): c is StationComponent => c.typ === 'station' && c.id === draft.stationId);
+  const paths = (station?.params.strahlengaenge ?? []).map((sg) => resolvePath(sg, lasers));
+  const pathLabel = (r: (typeof paths)[number]) =>
+    [r.laser?.name ?? 'Laser ?', r.lambda !== undefined ? formatIn(r.lambda, 'wavelength', 'nm') : (r.band ?? 'λ ?'), r.path.w0 !== undefined ? `w₀ ${formatSI(r.path.w0, 'm')}` : undefined]
+      .filter(Boolean)
+      .join(' · ');
 
   const d = deriveExperiment(p);
   const lim = checkLimits({ lambda: p.lambda, tau: p.tau, pAvg: d.pAvgQuelle, ePuls: d.ePulsQuelle, fRep: p.fRep, v: p.v }, laserLimits(laser, p.lambda), scanner);
 
-  // Erwartetes ID-Präfix aus Reihe + Werkstoff
-  const prefix = `${sanitizeIdPart(seriesCode)}-${sanitizeIdPart(material?.kurz || 'X')}-`;
-  const idMismatch = seriesCode !== '' && !draft.versuchsId.startsWith(prefix);
-  const reassignId = () =>
+  // Erwartetes ID-Präfix aus Reihe + Art. Die ID ändert sich nie automatisch, nur per „ID neu vergeben“.
+  const prefix = art ? versuchsIdPrefix(seriesCode, art.kuerzel) : undefined;
+  const idMismatch = seriesCode !== '' && prefix !== undefined && !draft.versuchsId.startsWith(prefix);
+  // Nach dem ersten Export/Import ist die ID fest (sie kann schon in Dateinamen und anderen Geräten stehen)
+  const idFixiert = exp.idFixiert === true;
+  const reassignId = () => {
+    if (!art || idFixiert) return;
+    const neu = nextVersuchsId([...allIds, ...taken, draft.versuchsId], seriesCode, art.kuerzel);
+    if (!window.confirm(`Versuchs-ID ${draft.versuchsId} durch ${neu} ersetzen? Die alte Nummer wird nicht wieder vergeben.`)) return;
+    change((x) => ({ ...x, versuchsId: neu }));
+  };
+
+  const onStation = (id: string | undefined) => change((x) => ({ ...x, stationId: id, strahlengangId: undefined }));
+  // Strahlengang wählen: Laser übernehmen, λ und w₀ nur vorbelegen, wenn leer (wie bei der Laserwahl)
+  const onStrahlengang = (id: string | undefined) => {
+    const r = paths.find((x) => x.path.id === id);
     change((x) => ({
       ...x,
-      versuchsId: nextVersuchsId([...taken, draft.versuchsId], seriesCode, material?.kurz || 'X'),
+      strahlengangId: id,
+      laserId: r?.laser?.id ?? x.laserId,
+      params: {
+        ...x.params,
+        lambda: x.params.lambda ?? r?.lambda,
+        tau: x.params.tau ?? r?.laser?.params.tauMin,
+        m2: x.params.m2 ?? (r?.laser ? laserM2(r.laser.params, x.params.lambda ?? r.lambda) : undefined),
+        w0: x.params.w0 ?? r?.path.w0,
+      },
     }));
+  };
 
   // Kopplung E_p ↔ P_avg über f_rep: Hinweis auf den jeweils anderen Wert, Warnung bei Widerspruch
   const both = p.ePuls !== undefined && p.pAvg !== undefined && p.fRep !== undefined;
@@ -169,7 +216,7 @@ function ExperimentForm({ exp }: { exp: Experiment }) {
   };
 
   const remove = async () => {
-    if (!window.confirm(`Versuch ${draft.versuchsId} löschen?`)) return;
+    if (!window.confirm(`Versuch ${draft.versuchsId} löschen? Die Nummer wird nicht neu vergeben.`)) return;
     await experimentsRepo.remove(exp.id);
     navigate(`/logbuch/r/${draft.seriesId}`);
   };
@@ -191,13 +238,13 @@ function ExperimentForm({ exp }: { exp: Experiment }) {
           />
         </div>
         <div className="two-col">
-          <TextField
-            label="Versuchs-ID"
-            required
-            value={draft.versuchsId}
-            error={error?.startsWith('Versuchs-ID') ? error : undefined}
-            onChange={(v) => change((x) => ({ ...x, versuchsId: (v ?? '').trim() }))}
-          />
+          <div className={`field${error?.startsWith('Versuchs-ID') ? ' is-warn' : ''}`}>
+            <span>Versuchs-ID</span>
+            <strong className="exp-id">{draft.versuchsId}</strong>
+            <div className={error?.startsWith('Versuchs-ID') ? 'field-warn' : 'field-hint'}>
+              {error?.startsWith('Versuchs-ID') ? error : idFixiert ? 'Fest (exportiert) – ändert sich nie.' : 'Ändert sich nie automatisch.'}
+            </div>
+          </div>
           <div className="field">
             <label htmlFor="exp-datum">Datum</label>
             <input
@@ -210,18 +257,33 @@ function ExperimentForm({ exp }: { exp: Experiment }) {
         </div>
         {idMismatch && (
           <p className="field-hint">
-            ID passt nicht zu Reihe/Werkstoff ({prefix}…).{' '}
-            <button type="button" className="link-btn" onClick={reassignId}>
-              ID neu vergeben
-            </button>
+            ID passt nicht zu Reihe/Art ({prefix}…) – bleibt bestehen.
+            {!idFixiert && (
+              <>
+                {' '}
+                <button type="button" className="link-btn" onClick={reassignId}>
+                  ID neu vergeben
+                </button>
+              </>
+            )}
           </p>
         )}
-        <SelectField
-          label="Versuchsreihe"
-          value={draft.seriesId}
-          options={series.map((s) => [s.id, `${s.code} ${s.titel}`.trim()] as const)}
-          onChange={(v) => v && change((x) => ({ ...x, seriesId: v }))}
-        />
+        <div className="two-col">
+          <SelectField
+            label="Versuchsreihe"
+            value={draft.seriesId}
+            options={series.map((s) => [s.id, `${s.code} ${s.titel}`.trim()] as const)}
+            onChange={(v) => v && change((x) => ({ ...x, seriesId: v }))}
+          />
+          <SelectField
+            label="Versuchsart"
+            empty="– wählen –"
+            value={draft.versuchsartId}
+            options={arten.map((a) => [a.id, artLabel(a)] as const)}
+            error={draft.versuchsartId ? undefined : 'Versuchsart fehlt (Versuch aus älterer Version) – bitte wählen'}
+            onChange={(v) => change((x) => ({ ...x, versuchsartId: v }))}
+          />
+        </div>
       </section>
 
       <Section title="Anlage und Probe">
@@ -230,8 +292,23 @@ function ExperimentForm({ exp }: { exp: Experiment }) {
           empty="– keine –"
           value={draft.systemId}
           options={systems.map((s) => [s.id, s.name] as const)}
-          onChange={(v) => change((x) => ({ ...x, systemId: v, laserId: undefined, optikId: undefined, scannerId: undefined }))}
+          onChange={(v) =>
+            change((x) => ({ ...x, systemId: v, laserId: undefined, optikId: undefined, scannerId: undefined, stationId: undefined, strahlengangId: undefined }))
+          }
         />
+        {draft.systemId && byType('station').length > 0 && (
+          <div className="two-col">
+            <SelectField label="Bearbeitungsstation" empty="–" value={draft.stationId} options={byType('station')} onChange={onStation} />
+            <SelectField
+              label="Strahlengang"
+              empty={station ? (paths.length ? '–' : '– keine Strahlengänge –') : '– erst Station wählen –'}
+              value={draft.strahlengangId}
+              options={paths.map((r) => [r.path.id, pathLabel(r)] as const)}
+              hint={draft.strahlengangId ? 'Laser, λ und w₀ werden vorbelegt, wenn leer.' : undefined}
+              onChange={onStrahlengang}
+            />
+          </div>
+        )}
         {draft.systemId && (
           <div className="two-col">
             <SelectField label="Laserquelle" empty="–" value={draft.laserId} options={byType('laserquelle')} onChange={onLaser} />
@@ -251,8 +328,14 @@ function ExperimentForm({ exp }: { exp: Experiment }) {
             label="Probe"
             empty={draft.materialId ? (samples.length ? '– keine –' : '– keine Proben angelegt –') : '– erst Werkstoff wählen –'}
             value={draft.sampleId}
-            options={samples.map((s) => [s.id, s.bezeichnung] as const)}
+            options={samples.map((s) => [s.id, probeLabel(s)] as const)}
             onChange={(v) => change((x) => ({ ...x, sampleId: v }))}
+          />
+          <TextField
+            label="Feld auf der Probe"
+            value={draft.probenFeld}
+            placeholder="z. B. F03"
+            onChange={(v) => change((x) => ({ ...x, probenFeld: v?.trim() || undefined }))}
           />
         </div>
       </Section>
@@ -319,6 +402,22 @@ function ExperimentForm({ exp }: { exp: Experiment }) {
             options={(Object.keys(W0_QUELLE_LABEL) as W0Quelle[]).map((k) => [k, W0_QUELLE_LABEL[k]] as const)}
             onChange={(v) => setP({ w0Quelle: v })}
           />
+        </div>
+        <div className="field">
+          <label htmlFor="exp-w0beleg">Beleg w₀ (Spotmessung)</label>
+          <input
+            id="exp-w0beleg"
+            list="exp-w0beleg-list"
+            value={p.w0Beleg ?? ''}
+            placeholder="Versuchs-ID der Spotmessung, z. B. K-SPOT-001, oder Freitext"
+            onChange={(e) => setP({ w0Beleg: e.target.value.trim() === '' ? undefined : e.target.value })}
+          />
+          <datalist id="exp-w0beleg-list">
+            {spotIds.map((v) => (
+              <option key={v} value={v} />
+            ))}
+          </datalist>
+          {p.w0Quelle === 'gemessen' && !p.w0Beleg && <div className="field-hint">Bei „gemessen“ die Spotmessung angeben.</div>}
         </div>
         <div className="row wrap">
           <button
@@ -409,8 +508,10 @@ function ExperimentForm({ exp }: { exp: Experiment }) {
           onClick={() =>
             void experimentsRepo.get(exp.id).then(async (cur) => {
               if (!cur) return;
-              const copy = await duplicate({ ...cur, ...draft });
-              navigate(`/logbuch/v/${copy.id}`);
+              const src = { ...cur, ...draft };
+              const run = async (artId?: string) => navigate(`/logbuch/v/${(await duplicate(src, artId)).id}`);
+              if (src.versuchsartId) await run();
+              else abfrage.ask('Dieser Versuch hat keine Versuchsart – Art für die Kopie', run);
             })
           }
         >
@@ -422,6 +523,7 @@ function ExperimentForm({ exp }: { exp: Experiment }) {
         <button type="button" className="btn btn-danger" onClick={() => void remove()}>
           Versuch löschen
         </button>
+        {abfrage.element && <div className="grow">{abfrage.element}</div>}
         <span className="muted small">
           Angelegt {formatDateDe(exp.createdAt)} · zuletzt geändert {formatDateDe(exp.updatedAt)}
         </span>

@@ -3,7 +3,7 @@
  */
 import { buildCsv } from '../core/exchange/exportCsv';
 import { MASTER_CSV, MASTER_JSON, serializeExport } from '../core/exchange/exportJson';
-import { currentExport } from './exchange';
+import { currentExport, fixExportedIds } from './exchange';
 import { setSetting } from './repos/settings';
 
 /** Minimal benötigte Teile eines Ordner-Handles (erleichtert Tests). */
@@ -32,6 +32,8 @@ export async function readMaster(dir: DirHandle): Promise<string | undefined> {
 
 /** Aktuellen Gesamtstand als logbuch.json + logbuch.csv schreiben (überschreibt). */
 export async function writeMaster(dir: DirHandle): Promise<void> {
+  // Vor dem Serialisieren, damit logbuch.json die festgeschriebenen IDs schon enthält
+  await fixExportedIds();
   const f = await currentExport();
   await writeText(dir, MASTER_JSON, serializeExport(f));
   await writeText(dir, MASTER_CSV, buildCsv(f.data));

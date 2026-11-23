@@ -1,28 +1,40 @@
-import { experimentsRepo, materialsRepo, seriesRepo } from '../../data/repos';
+import { experimentsRepo, seriesRepo, versuchsartenRepo } from '../../data/repos';
 import { getSetting } from '../../data/repos/settings';
-import { duplicateExperiment, experimentSnapshot, todayIso } from '../../core/logbook';
+import { duplicateExperiment, experimentSnapshot, todayIso, type ArtRef } from '../../core/logbook';
 import { nextVersuchsId } from '../../core/ids';
 import type { Experiment } from '../../data/types';
 
-async function materialKurz(materialId: string | undefined): Promise<string> {
-  if (!materialId) return 'X';
-  return (await materialsRepo.get(materialId))?.kurz || 'X';
+/** Versuchsart laden (auch gelöschte: ihr Kürzel bleibt Teil bestehender IDs). */
+export async function artRef(versuchsartId: string): Promise<ArtRef> {
+  const a = await versuchsartenRepo.get(versuchsartId);
+  if (!a) throw new Error('Versuchsart nicht gefunden');
+  return { id: a.id, kuerzel: a.kuerzel };
+}
+
+/**
+ * Art für einen neuen Versuch: zuerst die vorgegebene (Vorlage bzw. Auswahl), sonst die Standard-Art der Reihe.
+ * `undefined` → die UI muss nach der Art fragen.
+ */
+export async function defaultArtId(seriesId: string, preferred?: string): Promise<string | undefined> {
+  const pick = async (id: string | undefined) => (id && !(await versuchsartenRepo.get(id))?.deleted ? id : undefined);
+  return (await pick(preferred)) ?? (await pick((await seriesRepo.get(seriesId))?.standardVersuchsartId));
 }
 
 /** Neuer leerer Versuch in einer Reihe (Werkstoff und Anlage vom letzten Versuch bzw. Standard-Anlage). */
-export async function createEmptyExperiment(seriesId: string): Promise<Experiment> {
+export async function createEmptyExperiment(seriesId: string, versuchsartId: string): Promise<Experiment> {
   const series = await seriesRepo.get(seriesId);
   if (!series) throw new Error('Reihe nicht gefunden');
+  const art = await artRef(versuchsartId);
   const last = await experimentsRepo.latest(seriesId);
-  const materialId = last?.materialId;
   const systemId = last?.systemId ?? (await getSetting('defaultSystemId'));
   const ids = await experimentsRepo.allVersuchsIds();
   return experimentsRepo.create({
-    versuchsId: nextVersuchsId(ids, series.code, await materialKurz(materialId)),
+    versuchsId: nextVersuchsId(ids, series.code, art.kuerzel),
+    versuchsartId: art.id,
     seriesId,
     datum: todayIso(),
     systemId,
-    materialId,
+    materialId: last?.materialId,
     sampleId: last?.sampleId,
     params: {},
     abgeleitet: experimentSnapshot({}),
@@ -31,16 +43,18 @@ export async function createEmptyExperiment(seriesId: string): Promise<Experimen
   });
 }
 
-/** Versuch als Vorlage duplizieren (neue laufende Nummer in derselben Reihe). */
-export async function duplicate(src: Experiment): Promise<Experiment> {
+/**
+ * Versuch als Vorlage duplizieren (neue laufende Nummer in derselben Reihe und mit derselben Art).
+ * Hat die Vorlage (aus Schema ≤ 2) keine Art, muss `versuchsartId` angegeben werden.
+ */
+export async function duplicate(src: Experiment, versuchsartId?: string): Promise<Experiment> {
   const series = await seriesRepo.get(src.seriesId);
+  if (!series) throw new Error('Reihe nicht gefunden');
+  const artId = src.versuchsartId ?? versuchsartId;
+  if (!artId) throw new Error('Versuchsart fehlt');
   const ids = await experimentsRepo.allVersuchsIds();
   return experimentsRepo.create(
-    duplicateExperiment(src, {
-      existingIds: ids,
-      seriesCode: series?.code ?? src.versuchsId.split('-')[0] ?? 'X',
-      materialKurz: await materialKurz(src.materialId),
-    }),
+    duplicateExperiment(src, { existingIds: ids, seriesCode: series.code, art: await artRef(artId) }),
   );
 }
 
@@ -59,12 +73,15 @@ export async function nextSeriesCode(): Promise<string> {
 export async function createFromTransfer(
   seriesId: string,
   t: Pick<Experiment, 'systemId' | 'laserId' | 'optikId' | 'scannerId' | 'materialId' | 'params'>,
+  versuchsartId: string,
 ): Promise<Experiment> {
   const series = await seriesRepo.get(seriesId);
   if (!series) throw new Error('Reihe nicht gefunden');
+  const art = await artRef(versuchsartId);
   const ids = await experimentsRepo.allVersuchsIds();
   return experimentsRepo.create({
-    versuchsId: nextVersuchsId(ids, series.code, await materialKurz(t.materialId)),
+    versuchsId: nextVersuchsId(ids, series.code, art.kuerzel),
+    versuchsartId: art.id,
     seriesId,
     datum: todayIso(),
     systemId: t.systemId,
@@ -98,5 +115,3 @@ export async function applyTransfer(
     materialId: t.materialId ?? cur.materialId,
   });
 }
-
-export { materialKurz };

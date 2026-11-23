@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { SCHEMA_VERSION } from '../../data/db';
-import { applyMergePlan, currentExport, markExported, readAllData } from '../../data/exchange';
+import { applyMergePlan, currentExport, fixExportedIds, markExported, readAllData } from '../../data/exchange';
 import { getDeviceId, getSetting, setSetting } from '../../data/repos/settings';
 import { buildCsv } from '../../core/exchange/exportCsv';
 import { exportFileName, MASTER_CSV, MASTER_JSON, serializeExport } from '../../core/exchange/exportJson';
@@ -66,7 +66,9 @@ export function ExchangeSection() {
     run(async () => {
       const f = await currentExport();
       const r = await shareOrDownload(buildCsv(f.data), exportFileName(f.deviceName, new Date(), 'csv'), 'text/csv');
-      if (r !== 'abgebrochen') setMsg({ kind: 'ok', text: 'CSV der Versuche erstellt.' });
+      if (r === 'abgebrochen') return;
+      await fixExportedIds();
+      setMsg({ kind: 'ok', text: 'CSV der Versuche erstellt.' });
     });
 
   /** Datei prüfen und Vorschau zeigen. */
@@ -90,11 +92,12 @@ export function ExchangeSection() {
     run(async () => {
       if (!pending) return;
       const { plan, thenWriteMaster } = pending;
-      if (!plan.empty) await applyMergePlan(plan);
+      await applyMergePlan(plan);
       const s = totalCounts(plan);
+      const nK = plan.conflicts.length + plan.probenConflicts.length + plan.artConflicts.length;
       let text = plan.empty
         ? 'Keine Änderungen nötig.'
-        : `Übernommen: ${s.neu} neu, ${s.aktualisiert} aktualisiert, ${s.geloescht} gelöscht${plan.conflicts.length ? `, ${plan.conflicts.length} Konflikte umbenannt` : ''}.`;
+        : `Übernommen: ${s.neu} neu, ${s.aktualisiert} aktualisiert, ${s.geloescht} gelöscht${nK ? `, ${nK} Konflikte umbenannt` : ''}.`;
       if (thenWriteMaster && masterDir) {
         await writeMaster(masterDir);
         text += ` ${MASTER_JSON} und ${MASTER_CSV} gespeichert.`;

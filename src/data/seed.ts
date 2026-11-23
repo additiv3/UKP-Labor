@@ -1,4 +1,4 @@
-import type { Material, MaterialClass } from './types';
+import type { Material, MaterialClass, Versuchsart } from './types';
 
 /**
  * Startbibliothek: nur Werkstoffnamen, Kürzel und Klasse — bewusst KEINE Zahlenwerte (keine Werte ohne Quelle).
@@ -30,6 +30,30 @@ export function seedMaterials(): Material[] {
     name,
     kurz,
     klasse,
+    seed: true,
+    createdAt: SEED_TIMESTAMP,
+    updatedAt: SEED_TIMESTAMP,
+    deviceId: SEED_DEVICE_ID,
+  }));
+}
+
+/**
+ * Startliste der Versuchsarten (Teil der Versuchs-ID). Feste UUIDs wie bei den Werkstoffen, damit alle Geräte dieselben
+ * Datensätze haben. Wird beim Anlegen der Datenbank und beim Upgrade auf Schema 3 angelegt (nur fehlende IDs).
+ */
+const SEED_ARTEN: ReadonlyArray<readonly [id: string, kuerzel: string, name: string]> = [
+  ['5e3d0002-0000-4000-8000-000000000001', 'SPOT', 'Strahl-/Spotcharakterisierung'],
+  ['5e3d0002-0000-4000-8000-000000000002', 'PWR', 'Leistungs-/Pulsenergiemessung'],
+  ['5e3d0002-0000-4000-8000-000000000003', 'THR', 'Einzelkrater/Schwelle/Inkubation'],
+  ['5e3d0002-0000-4000-8000-000000000004', 'ABL', 'Linien-/Flächenabtrag'],
+  ['5e3d0002-0000-4000-8000-000000000005', 'CUT', 'Trennen/Schneiden'],
+];
+
+export function seedVersuchsarten(): Versuchsart[] {
+  return SEED_ARTEN.map(([id, kuerzel, name]) => ({
+    id,
+    kuerzel,
+    name,
     seed: true,
     createdAt: SEED_TIMESTAMP,
     updatedAt: SEED_TIMESTAMP,

@@ -2,14 +2,16 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { materialsRepo, samplesRepo } from '../../data/repos';
-import type { Sample } from '../../data/types';
+import type { Material, Sample } from '../../data/types';
+import { sanitizeIdPart } from '../../core/ids';
+import { probeLabel } from '../../data/labels';
 import { NumberInput } from '../../components/NumberInput';
 import { TextArea, TextField } from '../../components/fields';
 import { useAutosave } from '../../components/useAutosave';
 import { SaveBadge } from '../../components/SaveBadge';
 import { BackLink } from '../../components/MasterDetail';
 
-function SampleForm({ sample }: { sample: Sample }) {
+function SampleForm({ sample, material }: { sample: Sample; material: Material | undefined }) {
   const { draft, change, status, error } = useAutosave(
     sample,
     (d) =>
@@ -23,16 +25,32 @@ function SampleForm({ sample }: { sample: Sample }) {
         lagerort: d.lagerort,
         notiz: d.notiz,
       }),
-    (d) => (d.bezeichnung.trim() === '' ? 'Bezeichnung fehlt' : undefined),
   );
   const [unit, setUnit] = useState<string>();
+  const kurz = sanitizeIdPart(material?.kurz ?? '');
+  const mismatch = kurz !== '' && !draft.probenId.startsWith(`${kurz}-`);
   return (
     <section className="card">
       <div className="card-head">
-        <h2>Probe / Charge</h2>
+        <h2>Probe {draft.probenId}</h2>
         <SaveBadge status={status} error={error} />
       </div>
-      <TextField label="Bezeichnung" required value={draft.bezeichnung} onChange={(v) => change((d) => ({ ...d, bezeichnung: v ?? '' }))} />
+      <div className="field">
+        <span>Proben-ID</span>
+        <strong>{draft.probenId}</strong>
+        <div className="field-hint">
+          {mismatch
+            ? `ID passt nicht zum Werkstoffkürzel (${kurz}-…) – bleibt bestehen.`
+            : 'Beim Anlegen vergeben, wird nie geändert. Verweis in Versuchen und Dateinamen.'}
+        </div>
+      </div>
+      <TextField
+        label="Bezeichnung"
+        value={draft.bezeichnung}
+        placeholder={'z. B. Wafer 4" DSP'}
+        hint="Freitext, optional"
+        onChange={(v) => change((d) => ({ ...d, bezeichnung: v }))}
+      />
       <div className="two-col">
         <TextField label="Lieferant" value={draft.lieferant} onChange={(v) => change((d) => ({ ...d, lieferant: v }))} />
         <TextField label="Charge" value={draft.charge} onChange={(v) => change((d) => ({ ...d, charge: v }))} />
@@ -62,14 +80,14 @@ export function SampleDetail() {
   if (sample === undefined) return null;
   if (sample.deleted) return <p className="muted">Diese Probe wurde gelöscht.</p>;
   const remove = async () => {
-    if (!window.confirm(`Probe „${sample.bezeichnung}“ löschen?`)) return;
+    if (!window.confirm(`Probe „${probeLabel(sample)}“ löschen? Die Proben-ID wird nicht neu vergeben.`)) return;
     await samplesRepo.remove(sample.id);
     navigate(`/material/${materialId}`);
   };
   return (
     <div className="stack">
       <BackLink to={`/material/${materialId}`} label={material?.name ?? 'Werkstoff'} />
-      <SampleForm key={sample.id} sample={sample} />
+      <SampleForm key={sample.id} sample={sample} material={material} />
       <section className="card row wrap">
         <button type="button" className="btn btn-danger" onClick={() => void remove()}>
           Probe löschen

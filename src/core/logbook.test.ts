@@ -68,15 +68,20 @@ describe('Snapshot mit Burst (Formelversion 1.1)', () => {
 });
 
 describe('Duplizieren', () => {
-  it('neue ID, heutiges Datum, Parameter kopiert, Bemerkung leer', () => {
-    const src = exp();
+  it('neue ID mit Art, heutiges Datum, Parameter kopiert, Bemerkung und Feld leer', () => {
+    const src = exp({ versuchsartId: 'art-abl', probenFeld: 'F03', idFixiert: true, stationId: 'st', strahlengangId: 'sg1' });
     const d = duplicateExperiment(src, {
-      existingIds: ['B1-Si-001', 'B1-Si-002'],
+      // gelöschte und verworfene Versuche stehen mit in der Liste → B1-ABL-003 wird nicht neu vergeben
+      existingIds: ['B1-ABL-001', 'B1-ABL-002', 'B1-ABL-003', 'B1-Si-009'],
       seriesCode: 'B1',
-      materialKurz: 'Si',
+      art: { id: 'art-abl', kuerzel: 'ABL' },
       datum: '2026-11-13',
     });
-    expect(d.versuchsId).toBe('B1-Si-003');
+    expect(d.versuchsId).toBe('B1-ABL-004');
+    expect(d.versuchsartId).toBe('art-abl');
+    expect(d.probenFeld).toBeUndefined();
+    expect('idFixiert' in d).toBe(false);
+    expect(d).toMatchObject({ stationId: 'st', strahlengangId: 'sg1', sampleId: src.sampleId });
     expect(d.datum).toBe('2026-11-13');
     expect(d.bemerkung).toBeUndefined();
     expect(d.params).toEqual(src.params);

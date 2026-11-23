@@ -1,7 +1,8 @@
 import { useEffect, type ReactNode } from 'react';
 import { Link, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { componentsRepo, experimentsRepo, materialsRepo, samplesRepo, seriesRepo, systemsRepo } from '../../data/repos';
+import { componentsRepo, experimentsRepo, materialsRepo, samplesRepo, seriesRepo, systemsRepo, versuchsartenRepo } from '../../data/repos';
+import { probeLabel } from '../../data/labels';
 import type { Experiment } from '../../data/types';
 import { compareByVersuchsId, formatDateDe } from '../../core/logbook';
 import { formatIn, formatNumber, formatSI } from '../../core/physics/units';
@@ -69,7 +70,9 @@ function PrintExperiment() {
   const data = useLiveQuery(async () => {
     const e = await experimentsRepo.get(experimentId);
     if (!e) return { e };
-    const [series, system, laser, optik, scanner, material, sample] = await Promise.all([
+    const [art, station, series, system, laser, optik, scanner, material, sample] = await Promise.all([
+      e.versuchsartId ? versuchsartenRepo.get(e.versuchsartId) : undefined,
+      e.stationId ? componentsRepo.get(e.stationId) : undefined,
       seriesRepo.get(e.seriesId),
       e.systemId ? systemsRepo.get(e.systemId) : undefined,
       e.laserId ? componentsRepo.get(e.laserId) : undefined,
@@ -78,7 +81,7 @@ function PrintExperiment() {
       e.materialId ? materialsRepo.get(e.materialId) : undefined,
       e.sampleId ? samplesRepo.get(e.sampleId) : undefined,
     ]);
-    return { e, series, system, laser, optik, scanner, material, sample };
+    return { e, art, station, series, system, laser, optik, scanner, material, sample };
   }, [experimentId]);
   if (!data) return null;
   const { e } = data;
@@ -86,15 +89,18 @@ function PrintExperiment() {
 
   const head: Row[] = (
     [
+      ['Versuchsart', data.art ? `${data.art.kuerzel} · ${data.art.name}` : undefined],
       ['Reihe', data.series ? `${data.series.code} ${data.series.titel}`.trim() : undefined],
       ['Datum', formatDateDe(e.datum)],
       ['Status', STATUS_LABEL[e.status]],
       ['Anlage', data.system?.name],
+      ['Station', data.station?.name],
       ['Laser', data.laser?.name],
       ['Optik', data.optik?.name],
       ['Scanner', data.scanner?.name],
       ['Werkstoff', data.material ? `${data.material.name} (${data.material.kurz})` : undefined],
-      ['Probe', data.sample?.bezeichnung],
+      ['Probe', data.sample ? probeLabel(data.sample) : undefined],
+      ['Feld auf der Probe', e.probenFeld],
       ['Tags', e.tags.length ? e.tags.join(', ') : undefined],
     ] as [string, string | undefined][]
   ).filter((r): r is Row => r[1] !== undefined && r[1] !== '');
@@ -147,10 +153,12 @@ function PrintSeries() {
     const s = await seriesRepo.get(seriesId);
     const exps = s ? (await experimentsRepo.bySeries(seriesId)).sort(compareByVersuchsId) : [];
     const mats = new Map((await materialsRepo.list()).map((m) => [m.id, m]));
-    return { s, exps, mats };
+    const arten = new Map((await versuchsartenRepo.table.toArray()).map((a) => [a.id, a]));
+    const proben = new Map((await samplesRepo.table.toArray()).map((p) => [p.id, p]));
+    return { s, exps, mats, arten, proben };
   }, [seriesId]);
   if (!data) return null;
-  const { s, exps, mats } = data;
+  const { s, exps, mats, arten, proben } = data;
   if (!s || s.deleted) return <NotFound what="Versuchsreihe" />;
 
   return (
@@ -180,7 +188,9 @@ function PrintSeries() {
               <th>Versuchs-ID</th>
               <th>Datum</th>
               <th>Status</th>
+              <th>Art</th>
               <th>Werkstoff</th>
+              <th>Probe</th>
               {SERIES_COLS.map((c) => (
                 <th key={c}>{c}</th>
               ))}
@@ -193,7 +203,9 @@ function PrintSeries() {
                 <th>{e.versuchsId}</th>
                 <td>{formatDateDe(e.datum)}</td>
                 <td>{STATUS_LABEL[e.status]}</td>
+                <td>{e.versuchsartId ? (arten.get(e.versuchsartId)?.kuerzel ?? '') : ''}</td>
                 <td>{e.materialId ? (mats.get(e.materialId)?.kurz ?? '') : ''}</td>
+                <td>{[e.sampleId ? proben.get(e.sampleId)?.probenId : undefined, e.probenFeld].filter(Boolean).join(' ')}</td>
                 {seriesCells(e).map((c, i) => (
                   <td key={i} className="num">
                     {c}

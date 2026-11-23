@@ -66,7 +66,13 @@ export const TABLE_LABEL: Record<SyncTable, string> = {
   materials: 'Werkstoffe',
   litValues: 'Literaturwerte',
   samples: 'Proben',
+  versuchsarten: 'Versuchsarten',
   series: 'Versuchsreihen',
   experiments: 'Versuche',
   notes: 'Notizen',
 };
+
+/** Anzeige einer Probe: „FS-001 · Wafer 4"“ bzw. nur „FS-001“. */
+export function probeLabel(s: { probenId: string; bezeichnung?: string }): string {
+  return s.bezeichnung?.trim() ? `${s.probenId} · ${s.bezeichnung.trim()}` : s.probenId;
+}

@@ -14,7 +14,8 @@ Status: ☐ offen · ◐ in Arbeit · ☑ fertig. Nach jedem Meilenstein aktuali
 | 0.8 | D²-Fit und Inkubationsfit im Rechner | ☑ |
 | 0.9 | Druckansicht Versuch + Reihe, Burst-Rechner, Burst im Snapshot (Formelversion 1.1), Android-Check | ☑ |
 | 0.10 | Anlagenmodul: mehrere Laser und Bearbeitungsstationen je Anlage, Wellenlängen mit eigenen Grenzwerten, Strahlengänge, Status, Belege (unbestätigt/Quelle), Übersicht Stationen × Wellenlängen; Datenschema 2; private Importdatei der Laboranlagen | ☑ |
-| 0.11 | Wärmeakkumulation: modellfreie Kenngrößen, Werkstofffeld c_p, optional Akkumulationsmodell nach bestätigter Quelle | ☐ |
+| 0.11 | Versuchsart in der Versuchs-ID (`<Reihe>-<Art>-<NNN>`), Versuchsarten als synchronisierte Entität, Proben-IDs (`FS-001`), ID-Schutz (`idFixiert`), Probenfeld, w₀ „gemessen“ mit Beleg, Station/Strahlengang im Versuch; Datenschema 3; Ablageort `04_Versuche/logbuch/` | ☑ |
+| 0.12 | Wärmeakkumulation: modellfreie Kenngrößen, Werkstofffeld c_p, optional Akkumulationsmodell nach bestätigter Quelle | ☐ |
 
 Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entstehen.
 
@@ -168,6 +169,28 @@ Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entsteh
   Werte aus `daten/datenblaetter/` mit Quelle (Datei, Seite). Test `anlagenImport.test.ts` prüft Gültigkeit, Quelle je
   Zahlenwert, Verweise und idempotenten Import (wird übersprungen, wenn die Datei fehlt).
 
+## Stand 0.11 (umgesetzt 2026-11-23, abgenommen und veröffentlicht 2026-11-23)
+- **Namenskonvention der Promotion:** Die App ist die einzige Quelle für Versuchs- und Proben-IDs; IDs werden nie geändert und
+  nie wiederverwendet. `logbuch.csv` ist die Versuchsliste.
+- **Versuchs-ID `<Reihe>-<Art>-<NNN>`** (z. B. `K-SPOT-001`, `V0-ABL-001`) statt `<Reihe>-<Werkstoff>-<NNN>`; fortlaufend je
+  Präfix, gelöschte und verworfene Versuche zählen mit, Fallback `X` entfernt. Bestehende IDs bleiben.
+- **Versuchsarten** (`versuchsarten`, synchronisiert): Seed SPOT, PWR, THR, ABL, CUT mit festen UUIDs (`5e3d0002-…`), auch in
+  bestehenden Datenbanken angelegt. Verwaltung unter Logbuch → „Arten“. Reihe mit `standardVersuchsartId`; ohne sie fragt die
+  App vor dem Anlegen. Duplizieren und Matrix übernehmen die Art der Vorlage.
+- **ID-Schutz:** Versuchs-ID nur lesbar, ändert sich nie automatisch; Hinweis bei Abweichung von Reihe/Art. „ID neu vergeben“
+  nur per Knopf mit Bestätigung, solange `idFixiert` nicht gesetzt ist.
+- **Proben-ID `<Kürzel>-<NNN>`** beim Anlegen, danach nie geändert; `bezeichnung` optional; Anzeige `FS-001 · …`.
+  Versuch mit `probenFeld`.
+- **w₀-Herkunft:** Quelle „gemessen“ und `params.w0Beleg` (Versuchs-ID der Spotmessung, Vorschläge aus SPOT-Versuchen).
+- **Station und Strahlengang im Versuch** (`stationId`, `strahlengangId`): Auswahl nach Anlage, belegt Laser, λ, τ, M², w₀ vor,
+  wenn leer.
+- **Datenschema 3:** Dexie-Version 3 (Tabelle `versuchsarten`, Indizes `experiments.versuchsartId`, `samples.probenId`),
+  Migration 2 → 3 in Datenbank und Datei (`upgradeData`), Merge-Konflikte bei `probenId` (`-K1`) und Kürzel (`K1`).
+- **CSV:** neue Spalten `art`, `probenFeld`, `station`, `w0Beleg`; `probe` = Proben-ID. Druckansicht mit Art, Station, Probe.
+- **Ablageort:** `Claude Promotion/04_Versuche/logbuch/` (Hauptlogbuch), Geräte-Exporte in `_eingang/`.
+- Tests: `ids.test.ts`, `migrate.test.ts` (Datei 2 → 3), `migration.test.ts` (Datenbank 2 → 3), `exchange.test.ts`
+  (Konflikte, `idFixiert`, CSV), `actions.test.ts` (Nummerierung mit Tombstones, Proben-IDs, Fixierung).
+
 ## Plan 0.9 (festgelegt 2026-11-16)
 - **Druckansicht:** „Drucken“ im Versuch (Kopfdaten, alle Parameter, abgeleitete Werte aus dem Snapshot mit Formelversion,
   Bemerkung, Tags) und in der Reihe (kompakte Tabelle: ID, Datum, Kernparameter, F₀, Status). Helles Layout per
@@ -179,13 +202,23 @@ Hinweis: Export/Import (0.5) kommt bewusst früh, bevor echte Labordaten entsteh
 - **Snapshot:** Burst fließt in die abgeleiteten Werte ein → `FORMEL_VERSION` 1.0 → 1.1. Alte Snapshots bleiben unverändert.
 - **Android-Check:** Emulation in Chrome (Installieren, Zahlenfelder, Export/Teilen, Layout) + Checkliste fürs echte Gerät.
 
-## Plan 0.11
+## Plan 0.12
 - Kenngrößen ohne Modellannahme: Pulsperiode, thermische Diffusionslänge während τ und zwischen Pulsen, Vergleich mit w₀/Δx.
 - Werkstofffeld c_p (mit Quelle), κ = λ/(ρ·c_p) berechnet.
 - Akkumulationsmodell (z. B. Weber et al. 2014, Bauer et al. 2015) nur nach Bestätigung der Formel aus der Primärquelle;
   Konvention der Diffusionslänge (√(κτ) vs. 2√(κτ)) dabei festlegen.
 
 ## Entscheidungen
+- **`idFixiert` statt `createdAt > lastExportAt`** (0.11): `lastExportAt` gilt nur für ein Gerät, und die Uhren der Geräte gehen
+  verschieden. Das Feld wird beim Export/Hauptlogbuch-Speichern und beim Import gesetzt, ohne `updatedAt` zu ändern (kein
+  Merge-Effekt). Nach einem abgebrochenen Teilen-Dialog wird nicht fixiert.
+- **Versuchs-ID nicht mehr frei editierbar** (0.11): nur „ID neu vergeben“ (nächste freie Nummer, Bestätigung). Die alte Nummer
+  wird nicht wieder vergeben, weil die Nummerierung auch gelöschte und nicht mehr vorhandene IDs berücksichtigt.
+- **Kürzel-Konflikt beim Import → `K1` ohne Bindestrich** (0.11): Der Bindestrich trennt die Teile der Versuchs-ID. Kommt nur
+  vor, wenn dasselbe eigene Kürzel offline auf zwei Geräten angelegt wird (Seed-Arten haben feste UUIDs).
+- **Gleichzeitiges Anlegen auf zwei Geräten** (bekannte Grenze): Ohne Server können zwei Geräte offline dieselbe nächste
+  Nummer vergeben; beim Import wird die zweite zu `…-K1` und im Bericht gemeldet.
+- **Duplizieren übernimmt das Probenfeld nicht** (0.11): Jeder Versuch liegt auf einem eigenen Feld.
 - **Belege als Feldmap statt Wert-Objekte** (`belege: { pMax: { unbestaetigt, quelle } }` neben den Zahlen): Rechenkern,
   Rechner und Grenzwerte lesen weiter einfache Zahlen; nur die Anlagen-UI kennt die Belege.
 - **Spektralbereich aus λ:** UV < 400 nm ≤ VIS < 780 nm ≤ IR. Strahlengänge ohne bekannte Wellenlänge können einen Bereich

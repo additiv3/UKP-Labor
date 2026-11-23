@@ -9,6 +9,7 @@ import { SeriesDetail } from './SeriesDetail';
 import { ExperimentDetail } from './ExperimentDetail';
 import { AllExperiments } from './AllExperiments';
 import { MatrixScreen } from './MatrixScreen';
+import { VersuchsartDetail, VersuchsartenScreen } from './VersuchsartenScreen';
 
 function SeriesList() {
   const series = useLiveQuery(() => seriesRepo.listSorted(), []);
@@ -20,6 +21,7 @@ function SeriesList() {
   const navigate = useNavigate();
   const active = useMatch('/logbuch/r/:seriesId')?.params.seriesId;
   const allActive = useMatch('/logbuch/alle') !== null;
+  const artenActive = useMatch('/logbuch/arten/*') !== null;
 
   const add = async () => {
     const s = await seriesRepo.create({ code: await nextSeriesCode(), titel: '', status: 'laufend' });
@@ -36,10 +38,13 @@ function SeriesList() {
         <Link to="/logbuch/alle" className={`btn${allActive ? ' btn-active' : ''}`}>
           Alle Versuche
         </Link>
+        <Link to="/logbuch/arten" className={`btn${artenActive ? ' btn-active' : ''}`}>
+          Arten
+        </Link>
       </div>
       {series.length === 0 ? (
         <EmptyState title="Noch keine Versuchsreihen">
-          <p>Lege eine Reihe an, z. B. „B1 Schwelle Si“. Darin entstehen die Versuche mit fortlaufender ID (B1-Si-001 …).</p>
+          <p>Lege eine Reihe an, z. B. „B1 Schwelle Si“. Darin entstehen die Versuche mit fortlaufender ID je Versuchsart (B1-ABL-001 …).</p>
           <p className="muted small">Tipp: Anlagen und Werkstoffe vorher anlegen, dann sind sie im Versuch auswählbar.</p>
         </EmptyState>
       ) : (
@@ -78,6 +83,8 @@ export function LogbookScreen() {
           <Route path="r/:seriesId/matrix" element={<MatrixScreen />} />
           <Route path="v/:experimentId" element={<ExperimentDetail />} />
           <Route path="alle" element={<AllExperiments />} />
+          <Route path="arten" element={<VersuchsartenScreen />} />
+          <Route path="arten/:artId" element={<VersuchsartDetail />} />
         </Routes>
       }
     />

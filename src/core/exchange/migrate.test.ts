@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { migrateComponentV1toV2, upgradeRecord } from './migrate';
+import { assignProbenIds, migrateComponentV1toV2, upgradeRecord } from './migrate';
 import { parseExport } from './schema';
 
 const ts = '2026-11-10T10:00:00.000Z';
@@ -92,5 +92,53 @@ describe('Import älterer Exportdateien', () => {
     expect(parseExport(file(2, [station]), 2).issues).toEqual([]);
     const bad = { ...station, status: 'kaputt' };
     expect(parseExport(file(2, [bad]), 2).issues).toHaveLength(1);
+  });
+});
+
+describe('Migration Schema 2 → 3', () => {
+  const u = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+  const at = (d: number) => `2026-11-${String(d).padStart(2, '0')}T10:00:00.000Z`;
+  const rec = (n: number, o: object) => ({ id: u(n), createdAt: at(10), updatedAt: at(10), deviceId: 'd', ...o });
+  const materials = [rec(1, { name: 'Quarzglas', kurz: 'FS', klasse: 'glas' }), rec(2, { name: 'Silizium', kurz: 'Si', klasse: 'halbleiter' })];
+  const v2Samples = () => [
+    rec(12, { materialId: u(1), bezeichnung: 'zweite', createdAt: at(12) }),
+    rec(11, { materialId: u(1), bezeichnung: 'erste', createdAt: at(11), deleted: true }),
+    rec(13, { materialId: u(2), bezeichnung: 'Wafer', createdAt: at(5) }),
+    rec(14, { materialId: u(99), bezeichnung: 'ohne Werkstoff', createdAt: at(6) }),
+  ];
+
+  it('Proben bekommen IDs je Kürzel in createdAt-Reihenfolge (gelöschte zählen mit), Zeitstempel bleiben', () => {
+    const samples: Record<string, unknown>[] = v2Samples();
+    const changed = assignProbenIds(materials, samples);
+    expect(changed).toHaveLength(4);
+    const byId = Object.fromEntries(samples.map((s) => [s.id, s.probenId]));
+    expect(byId).toEqual({ [u(11)]: 'FS-001', [u(12)]: 'FS-002', [u(13)]: 'Si-001', [u(14)]: 'P-001' });
+    expect(samples.every((s) => s.updatedAt === at(10))).toBe(true);
+    // idempotent: vorhandene IDs bleiben, neue Proben bekommen die nächste Nummer
+    samples.push(rec(15, { materialId: u(1), createdAt: at(1) }));
+    expect(assignProbenIds(materials, samples).map((s) => s.probenId)).toEqual(['FS-003']);
+  });
+
+  it('Datei mit Schema 2 wird beim Einlesen migriert: Proben-IDs, Versuche behalten ihre ID ohne Art', () => {
+    const exp = rec(20, { versuchsId: 'B1-Si-001', seriesId: u(30), datum: '2026-11-10', params: { w0: 1e-5 }, tags: [], status: 'durchgefuehrt' });
+    const text = JSON.stringify({
+      app: 'ukp-labor', schemaVersion: 2, formelVersion: '1.1', exportedAt: ts, deviceId: 'd',
+      data: { materials, samples: v2Samples(), experiments: [exp] },
+    });
+    const r = parseExport(text, 3);
+    expect(r.issues).toEqual([]);
+    expect(r.file!.data.samples.map((s) => s.probenId).sort()).toEqual(['FS-001', 'FS-002', 'P-001', 'Si-001']);
+    expect(r.file!.data.samples.find((s) => s.id === u(12))?.bezeichnung).toBe('zweite');
+    const e = r.file!.data.experiments[0]!;
+    expect(e.versuchsId).toBe('B1-Si-001');
+    expect(e.versuchsartId).toBeUndefined();
+    expect(e.updatedAt).toBe(at(10));
+  });
+
+  it('Schema-3-Datei: Probe ohne probenId ist ungültig; neuere Schemas werden abgelehnt', () => {
+    const text = (v: number) =>
+      JSON.stringify({ app: 'ukp-labor', schemaVersion: v, formelVersion: '1.1', exportedAt: ts, deviceId: 'd', data: { materials, samples: v2Samples() } });
+    expect(parseExport(text(3), 3).issues).toHaveLength(4);
+    expect(parseExport(text(4), 3).fatal).toMatch(/neueren App-Version/);
   });
 });

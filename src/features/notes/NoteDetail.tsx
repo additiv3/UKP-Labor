@@ -141,7 +141,7 @@ function NoteForm({ note }: { note: Note }) {
             className="note-text"
             aria-label="Inhalt (Markdown)"
             value={draft.inhalt}
-            placeholder={'Markdown: # Überschrift, **fett**, - Liste, - [ ] Aufgabe\nFormel: $F_0 = 2E_p/(\\pi w_0^2)$\nVerweis: [[B1-Si-001]]'}
+            placeholder={'Markdown: # Überschrift, **fett**, - Liste, - [ ] Aufgabe\nFormel: $F_0 = 2E_p/(\\pi w_0^2)$\nVerweis: [[B1-ABL-001]]'}
             onChange={(e) => change((d) => ({ ...d, inhalt: e.target.value }))}
           />
           <div className="note-preview" aria-label="Vorschau">

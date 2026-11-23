@@ -3,7 +3,7 @@
  * Reine Funktionen, Werte in SI.
  */
 import { nextLaufnummer, formatVersuchsId } from './ids';
-import { experimentSnapshot, todayIso } from './logbook';
+import { experimentSnapshot, todayIso, type ArtRef } from './logbook';
 import type { Experiment, ExperimentParams } from '../data/types';
 import type { Quantity } from './physics/units';
 
@@ -86,20 +86,21 @@ export interface MatrixContext {
   existingIds: Iterable<string>;
   seriesId: string;
   seriesCode: string;
-  materialKurz: string;
+  /** Art der Vorlage bzw. gewählte Art */
+  art: ArtRef;
   datum?: string;
 }
 
-type NewExperiment = Omit<Experiment, 'id' | 'createdAt' | 'updatedAt' | 'deviceId' | 'deleted'>;
+type NewExperiment = Omit<Experiment, 'id' | 'createdAt' | 'updatedAt' | 'deviceId' | 'deleted' | 'idFixiert'>;
 
-/** Vorlage (Anlage, Probe, Parameter, Tags) mit Werten aus dem Gitter überschreiben; fortlaufende IDs. */
+/** Vorlage (Anlage, Probe, Parameter, Tags) mit Werten aus dem Gitter überschreiben; fortlaufende IDs mit der Art. */
 export function buildMatrix(
-  template: Pick<Experiment, 'systemId' | 'laserId' | 'optikId' | 'scannerId' | 'sampleId' | 'materialId' | 'params' | 'tags'>,
+  template: Pick<Experiment, 'systemId' | 'laserId' | 'optikId' | 'scannerId' | 'stationId' | 'strahlengangId' | 'sampleId' | 'materialId' | 'params' | 'tags'>,
   axes: readonly MatrixAxis[],
   ctx: MatrixContext,
 ): NewExperiment[] {
   const combos = combinations(axes);
-  let nr = nextLaufnummer(ctx.existingIds, ctx.seriesCode, ctx.materialKurz || 'X');
+  let nr = nextLaufnummer(ctx.existingIds, ctx.seriesCode, ctx.art.kuerzel);
   const tags = template.tags.includes('matrix') ? [...template.tags] : [...template.tags, 'matrix'];
   return combos.map((c) => {
     const params: ExperimentParams = { ...structuredClone(template.params), ...c };
@@ -108,13 +109,16 @@ export function buildMatrix(
     if (c.pAvg !== undefined) delete params.ePuls;
     if (c.v !== undefined && c.pulsabstand === undefined) delete params.pulsabstand;
     return {
-      versuchsId: formatVersuchsId(ctx.seriesCode, ctx.materialKurz || 'X', nr++),
+      versuchsId: formatVersuchsId(ctx.seriesCode, ctx.art.kuerzel, nr++),
+      versuchsartId: ctx.art.id,
       seriesId: ctx.seriesId,
       datum: ctx.datum ?? todayIso(),
       systemId: template.systemId,
       laserId: template.laserId,
       optikId: template.optikId,
       scannerId: template.scannerId,
+      stationId: template.stationId,
+      strahlengangId: template.strahlengangId,
       sampleId: template.sampleId,
       materialId: template.materialId,
       params,

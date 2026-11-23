@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { litValuesRepo, materialsRepo, removeMaterialCascade, samplesRepo } from '../../data/repos';
 import { MATERIAL_CLASSES, type LitGroesse, type Material, type MaterialClass } from '../../data/types';
-import { LIT_GROESSE_LABEL, MATERIAL_CLASS_LABEL } from '../../data/labels';
+import { LIT_GROESSE_LABEL, MATERIAL_CLASS_LABEL, probeLabel } from '../../data/labels';
 import { NumberInput } from '../../components/NumberInput';
 import { SelectField, TextArea, TextField } from '../../components/fields';
 import { useAutosave } from '../../components/useAutosave';
@@ -46,10 +46,10 @@ function MaterialForm({ material }: { material: Material }) {
       <TextField label="Name" required value={draft.name} onChange={(v) => change((d) => ({ ...d, name: v ?? '' }))} />
       <div className="two-col">
         <TextField
-          label="Kürzel (Versuchs-ID)"
+          label="Kürzel (Proben-ID)"
           value={draft.kurz}
           placeholder="z. B. Si"
-          hint="z. B. B1-Si-001"
+          hint="z. B. Si-001; bestehende Proben-IDs bleiben bei Änderung"
           error={/[\s-]/.test(draft.kurz) ? 'Ohne Leerzeichen/Bindestrich' : undefined}
           onChange={(v) => change((d) => ({ ...d, kurz: v ?? '' }))}
         />
@@ -99,7 +99,11 @@ export function MaterialDetail() {
 
   const addLit = () => navigate(`/material/${materialId}/literatur/neu?groesse=${litGroesse}`);
   const addSample = async () => {
-    const s = await samplesRepo.create({ materialId, bezeichnung: `${material.kurz || material.name} Probe ${samples.length + 1}` });
+    if (!material.kurz.trim()) {
+      window.alert('Der Werkstoff braucht ein Kürzel – daraus entsteht die Proben-ID (z. B. FS-001).');
+      return;
+    }
+    const s = await samplesRepo.createForMaterial(materialId);
     navigate(`/material/${materialId}/proben/${s.id}`);
   };
   const remove = async () => {
@@ -162,7 +166,7 @@ export function MaterialDetail() {
               <li key={s.id}>
                 <Link to={`/material/${materialId}/proben/${s.id}`} className="list-item list-link">
                   <div className="list-main">
-                    <span className="list-title">{s.bezeichnung}</span>
+                    <span className="list-title">{probeLabel(s)}</span>
                     <span className="muted small">
                       {[s.lieferant, s.charge && `Charge ${s.charge}`, s.dicke !== undefined && `d = ${formatSI(s.dicke, 'm')}`, s.lagerort]
                         .filter(Boolean)

@@ -8,8 +8,11 @@ import type {
   Sample,
   Series,
   System,
+  Versuchsart,
 } from '../types';
+import { nextProbenId } from '../../core/ids';
 import { createRepo } from './base';
+import type { Base } from '../types';
 
 const alive = <T extends { deleted?: boolean }>(r: T) => !r.deleted;
 const byName = <T extends { name: string }>(a: T, b: T) => a.name.localeCompare(b.name, 'de');
@@ -42,12 +45,39 @@ export const litValuesRepo = {
   },
 };
 
+const sampleRepoBase = createRepo<Sample>(db.samples);
 export const samplesRepo = {
-  ...createRepo<Sample>(db.samples),
+  ...sampleRepoBase,
   async byMaterial(materialId: string): Promise<Sample[]> {
     return (await db.samples.where('materialId').equals(materialId).filter(alive).toArray()).sort((a, b) =>
-      a.bezeichnung.localeCompare(b.bezeichnung, 'de'),
+      a.probenId.localeCompare(b.probenId, 'de', { numeric: true }),
     );
+  },
+  /** Alle Proben-IDs inkl. gelöschter (damit keine Nummer doppelt vergeben wird). */
+  async allProbenIds(): Promise<string[]> {
+    return (await db.samples.toArray()).map((s) => s.probenId);
+  },
+  /** Neue Probe mit der nächsten Proben-ID `<Kürzel>-<NNN>`; Fehler, wenn der Werkstoff kein Kürzel hat. */
+  async createForMaterial(materialId: string, data: Omit<Sample, keyof Base | 'probenId' | 'materialId'> = {}): Promise<Sample> {
+    return db.transaction('rw', db.samples, db.materials, db.settings, async () => {
+      const m = await db.materials.get(materialId);
+      if (!m) throw new Error('Werkstoff nicht gefunden');
+      if (!m.kurz.trim()) throw new Error('Der Werkstoff braucht ein Kürzel für die Proben-ID');
+      const ids = (await db.samples.toArray()).map((s) => s.probenId);
+      return sampleRepoBase.create({ ...data, materialId, probenId: nextProbenId(ids, m.kurz) });
+    });
+  },
+};
+
+export const versuchsartenRepo = {
+  ...createRepo<Versuchsart>(db.versuchsarten),
+  async listSorted(): Promise<Versuchsart[]> {
+    return (await db.versuchsarten.filter(alive).toArray()).sort((a, b) => a.kuerzel.localeCompare(b.kuerzel, 'de'));
+  },
+  /** Anzahl der Versuche (inkl. gelöschter), die die Art verwenden → Kürzel gesperrt, sobald > 0. */
+  async usage(id: string): Promise<{ alle: number; aktiv: number }> {
+    const all = await db.experiments.where('versuchsartId').equals(id).toArray();
+    return { alle: all.length, aktiv: all.filter(alive).length };
   },
 };
 

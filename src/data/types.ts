@@ -240,8 +240,11 @@ export interface LitValue extends Base {
 }
 
 export interface Sample extends Base {
+  /** „FS-001“: `<Werkstoffkürzel>-<NNN>`, beim Anlegen vergeben, danach nie geändert */
+  probenId: string;
   materialId: string;
-  bezeichnung: string;
+  /** Freitext (Beschreibung) */
+  bezeichnung?: string;
   lieferant?: string;
   charge?: string;
   /** m */
@@ -254,6 +257,16 @@ export interface Sample extends Base {
 
 // ---------------------------------------------------------------- Logbuch
 
+/** Versuchsart (Teil der Versuchs-ID), z. B. SPOT, ABL. Synchronisiert wie alle Entitäten. */
+export interface Versuchsart extends Base {
+  /** 2–6 Zeichen A–Z/0–9, eindeutig; gesperrt, sobald ein Versuch die Art verwendet */
+  kuerzel: string;
+  name: string;
+  beschreibung?: string;
+  /** Teil der mitgelieferten Startliste */
+  seed?: boolean;
+}
+
 export type SeriesStatus = 'geplant' | 'laufend' | 'abgeschlossen';
 
 export interface Series extends Base {
@@ -263,9 +276,12 @@ export interface Series extends Base {
   ziel?: string;
   status: SeriesStatus;
   notizen?: string;
+  /** Versuchsart für neue Versuche dieser Reihe */
+  standardVersuchsartId?: string;
 }
 
-export type W0Quelle = 'datenblatt' | 'berechnet' | 'd2' | 'geschaetzt';
+export const W0_QUELLEN = ['datenblatt', 'berechnet', 'd2', 'gemessen', 'geschaetzt'] as const;
+export type W0Quelle = (typeof W0_QUELLEN)[number];
 
 export interface ExperimentParams {
   /** m */
@@ -284,6 +300,8 @@ export interface ExperimentParams {
   /** m */
   w0?: number;
   w0Quelle?: W0Quelle;
+  /** Versuchs-ID der Spotmessung (Art SPOT) oder Freitext */
+  w0Beleg?: string;
   m2?: number;
   /** m, z relativ zur Oberfläche, + = über der Oberfläche */
   fokuslage?: number;
@@ -303,8 +321,15 @@ export interface ExperimentParams {
 export type ExperimentStatus = 'geplant' | 'durchgefuehrt' | 'verworfen';
 
 export interface Experiment extends Base {
-  /** „B1-Si-001“, eindeutig */
+  /** „B1-ABL-001“: `<Reihe>-<Art>-<NNN>`, eindeutig, ändert sich nie automatisch */
   versuchsId: string;
+  /** Pflicht für neue Versuche; fehlt bei Versuchen aus Schema ≤ 2 (UI fordert die Auswahl) */
+  versuchsartId?: string;
+  /**
+   * true, sobald der Versuch das Gerät per Export verlassen hat oder per Import angekommen ist.
+   * Danach kann die ID nicht mehr neu vergeben werden. Wird ohne neuen `updatedAt` gesetzt.
+   */
+  idFixiert?: boolean;
   seriesId: string;
   /** ISO-Datum */
   datum: string;
@@ -312,7 +337,13 @@ export interface Experiment extends Base {
   laserId?: string;
   optikId?: string;
   scannerId?: string;
+  /** Bearbeitungsstation (Komponente typ „station“) */
+  stationId?: string;
+  /** `Strahlengang.id` innerhalb der Station */
+  strahlengangId?: string;
   sampleId?: string;
+  /** Feld/Position auf der Probe, z. B. „F03“ */
+  probenFeld?: string;
   materialId?: string;
   params: ExperimentParams;
   /** Snapshot der abgeleiteten Werte */
@@ -372,6 +403,7 @@ export const SYNC_TABLES = [
   'materials',
   'litValues',
   'samples',
+  'versuchsarten',
   'series',
   'experiments',
   'notes',
@@ -384,6 +416,7 @@ export interface SyncEntityMap {
   materials: Material;
   litValues: LitValue;
   samples: Sample;
+  versuchsarten: Versuchsart;
   series: Series;
   experiments: Experiment;
   notes: Note;

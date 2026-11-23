@@ -4,10 +4,12 @@
  * 2. Unbekannte `id` → einfügen.
  * 3. Bekannte `id` → neuerer `updatedAt` gewinnt (last-writer-wins); Gleichstand → nichts tun.
  * 4. Tombstones wie normale Änderungen (neuerer Tombstone löscht).
- * 5. Gleiche `versuchsId` bei verschiedener UUID → beide behalten, importierte bekommt Suffix `-K1` (…`-K2`).
+ * 5. Gleiche `versuchsId` bzw. `probenId` bei verschiedener UUID → beide behalten, importierte bekommt Suffix `-K1`
+ *    (…`-K2`). Gleiches Versuchsart-Kürzel → importierte Art bekommt `K1` ohne Bindestrich (Bindestrich ist ID-Trenner).
  * 6. Bericht: neu / aktualisiert / gelöscht / unverändert / lokal neuer / Konflikte.
+ * 7. Alle Versuche aus der Datei gelten als exportiert → `idFixiert` (ohne neuen `updatedAt`).
  */
-import { SYNC_TABLES, type Experiment, type SyncTable } from '../../data/types';
+import { SYNC_TABLES, type Base, type SyncTable } from '../../data/types';
 import { emptyData, type ExportData } from './schema';
 
 export interface TableCounts {
@@ -19,13 +21,18 @@ export interface TableCounts {
   lokalNeuer: number;
 }
 
-export interface IdConflict {
-  versuchsId: string;
+/** Doppelter Schlüssel (Proben-ID, Kürzel) bei verschiedenen UUIDs. */
+export interface KeyConflict {
+  wert: string;
   umbenanntIn: string;
-  /** UUID des importierten (umbenannten) Versuchs */
+  /** UUID des importierten (umbenannten) Datensatzes */
   id: string;
-  /** UUID des lokalen Versuchs mit derselben Versuchs-ID */
+  /** UUID des lokalen Datensatzes mit demselben Schlüssel */
   lokalId: string;
+}
+
+export interface IdConflict extends Omit<KeyConflict, 'wert'> {
+  versuchsId: string;
 }
 
 export interface MergePlan {
@@ -33,9 +40,15 @@ export interface MergePlan {
   puts: ExportData;
   counts: Record<SyncTable, TableCounts>;
   conflicts: IdConflict[];
+  /** Konflikte bei Proben-IDs (importierte Probe umbenannt) */
+  probenConflicts: KeyConflict[];
+  /** Konflikte bei Versuchsart-Kürzeln (importierte Art umbenannt) */
+  artConflicts: KeyConflict[];
+  /** lokale Versuche, die in der Datei vorkommen und noch nicht `idFixiert` sind (ohne neuen Zeitstempel markieren) */
+  fixieren: string[];
   /** Reihen-Codes, die nach dem Import mehrfach vorkommen (nicht automatisch umbenannt) */
   seriesCodeConflicts: string[];
-  /** true, wenn nichts zu schreiben ist */
+  /** true, wenn keine Datensätze zu schreiben sind (`fixieren` wird trotzdem angewendet) */
   empty: boolean;
 }
 
@@ -80,49 +93,76 @@ export function planMerge(
     }
   }
 
-  const conflicts = resolveVersuchsIdConflicts(local.experiments, puts.experiments, opts);
+  // Was aus einer Datei kommt, hat ein Gerät per Export verlassen: Versuchs-ID ab jetzt fest.
+  puts.experiments = puts.experiments.map((e) => (e.idFixiert ? e : { ...e, idFixiert: true }));
+  const localExp = new Map(local.experiments.map((e) => [e.id, e]));
+  const putExpIds = new Set(puts.experiments.map((e) => e.id));
+  const fixieren = [...new Set(incoming.experiments.map((e) => e.id))].filter((id) => {
+    const l = localExp.get(id);
+    return l !== undefined && !l.idFixiert && !putExpIds.has(id);
+  });
+
+  const conflicts = resolveKeyConflicts(local.experiments, puts.experiments, (e) => e.versuchsId, (e, v) => ({ ...e, versuchsId: v }), (v, k) => `${v}-K${k}`, opts).map(
+    ({ wert, ...c }) => ({ versuchsId: wert, ...c }),
+  );
+  const probenConflicts = resolveKeyConflicts(local.samples, puts.samples, (s) => s.probenId, (s, v) => ({ ...s, probenId: v }), (v, k) => `${v}-K${k}`, opts);
+  const artConflicts = resolveKeyConflicts(local.versuchsarten, puts.versuchsarten, (a) => a.kuerzel, (a, v) => ({ ...a, kuerzel: v }), (v, k) => `${v}K${k}`, opts);
+  // `fixieren` ändert keine Daten (nur den Exportzustand) und zählt deshalb nicht als Änderung
   const empty = SYNC_TABLES.every((t) => puts[t].length === 0);
-  return { puts, counts, conflicts, seriesCodeConflicts: duplicateSeriesCodes(local, puts), empty };
+  return {
+    puts,
+    counts,
+    conflicts,
+    probenConflicts,
+    artConflicts,
+    fixieren,
+    seriesCodeConflicts: duplicateSeriesCodes(local, puts),
+    empty,
+  };
 }
 
 /**
- * Prüft den Endstand (lokal + Änderungen) auf doppelte Versuchs-IDs nicht gelöschter Versuche.
- * Der importierte Versuch wird umbenannt (`-K1`, `-K2` …) und bekommt einen neuen Zeitstempel,
- * damit die Umbenennung beim nächsten Abgleich auch auf die anderen Geräte gelangt.
+ * Prüft den Endstand (lokal + Änderungen) auf doppelte Schlüssel (Versuchs-ID, Proben-ID, Kürzel) nicht gelöschter
+ * Datensätze. Der importierte Datensatz wird umbenannt (`rename(wert, 1)`, `rename(wert, 2)` …) und bekommt einen neuen
+ * Zeitstempel, damit die Umbenennung beim nächsten Abgleich auch auf die anderen Geräte gelangt.
  */
-function resolveVersuchsIdConflicts(
-  localExps: Experiment[],
-  putExps: Experiment[],
+function resolveKeyConflicts<T extends Base>(
+  localRecs: T[],
+  putRecs: T[],
+  key: (r: T) => string,
+  withKey: (r: T, v: string) => T,
+  rename: (v: string, k: number) => string,
   opts: { now?: Date; deviceId?: string },
-): IdConflict[] {
-  const final = new Map<string, Experiment>(localExps.map((e) => [e.id, e]));
-  const putIds = new Set(putExps.map((e) => e.id));
-  for (const e of putExps) final.set(e.id, e);
+): KeyConflict[] {
+  const final = new Map<string, T>(localRecs.map((e) => [e.id, e]));
+  const putIds = new Set(putRecs.map((e) => e.id));
+  for (const e of putRecs) final.set(e.id, e);
 
-  // Belegte Versuchs-IDs (lokal unveränderte zuerst, damit lokale Namen Vorrang haben)
+  // Belegte Schlüssel (lokal unveränderte zuerst, damit lokale Namen Vorrang haben)
   const owner = new Map<string, string>();
   const used = new Set<string>();
   for (const e of final.values()) {
-    used.add(e.versuchsId);
-    if (!e.deleted && !putIds.has(e.id)) owner.set(e.versuchsId, e.id);
+    used.add(key(e));
+    if (!e.deleted && !putIds.has(e.id)) owner.set(key(e), e.id);
   }
 
-  const conflicts: IdConflict[] = [];
+  const conflicts: KeyConflict[] = [];
   const stamp = (opts.now ?? new Date()).toISOString();
-  putExps.forEach((e, i) => {
+  putRecs.forEach((e, i) => {
     if (e.deleted) return;
-    const other = owner.get(e.versuchsId);
+    const v = key(e);
+    const other = owner.get(v);
     if (other === undefined || other === e.id) {
-      owner.set(e.versuchsId, e.id);
+      owner.set(v, e.id);
       return;
     }
     let k = 1;
-    while (used.has(`${e.versuchsId}-K${k}`)) k++;
-    const neu = `${e.versuchsId}-K${k}`;
+    while (used.has(rename(v, k))) k++;
+    const neu = rename(v, k);
     used.add(neu);
     owner.set(neu, e.id);
-    conflicts.push({ versuchsId: e.versuchsId, umbenanntIn: neu, id: e.id, lokalId: other });
-    putExps[i] = { ...e, versuchsId: neu, updatedAt: stamp, deviceId: opts.deviceId ?? e.deviceId };
+    conflicts.push({ wert: v, umbenanntIn: neu, id: e.id, lokalId: other });
+    putRecs[i] = { ...withKey(e, neu), updatedAt: stamp, deviceId: opts.deviceId ?? e.deviceId };
   });
   return conflicts;
 }

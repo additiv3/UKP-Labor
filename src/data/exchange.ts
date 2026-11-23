@@ -3,7 +3,7 @@
  */
 import { db, SCHEMA_VERSION } from './db';
 import { SYNC_TABLES, type SyncTable } from './types';
-import { seedMaterials } from './seed';
+import { seedMaterials, seedVersuchsarten } from './seed';
 import { getDeviceId, getSetting, setSetting } from './repos/settings';
 import { emptyData, type ExportData, type ExportFile } from '../core/exchange/schema';
 import { buildExport } from '../core/exchange/exportJson';
@@ -37,11 +37,23 @@ export async function applyMergePlan(plan: MergePlan): Promise<void> {
     for (const t of SYNC_TABLES) {
       if (plan.puts[t].length) await table(t).bulkPut(plan.puts[t]);
     }
+    // ohne neuen updatedAt: der Datensatz selbst ändert sich nicht, nur sein Exportzustand
+    if (plan.fixieren.length) await db.experiments.where('id').anyOf(plan.fixieren).modify({ idFixiert: true });
   });
 }
 
+/**
+ * Versuchs-IDs aller exportierten Versuche festschreiben (beim Export/Hauptlogbuch-Speichern), ohne neuen `updatedAt`.
+ * Gibt die Anzahl neu fixierter Versuche zurück.
+ */
+export async function fixExportedIds(): Promise<number> {
+  return db.experiments.filter((e) => !e.idFixiert).modify({ idFixiert: true });
+}
+
+/** Nach einem erfolgreichen Export: Zeitpunkt merken und Versuchs-IDs festschreiben. */
 export async function markExported(): Promise<void> {
   await setSetting('lastExportAt', new Date().toISOString());
+  await fixExportedIds();
 }
 
 /** true, wenn es Daten außer der Startbibliothek gibt (für die Backup-Erinnerung). */
@@ -67,6 +79,7 @@ export async function resetAllData(): Promise<void> {
   await db.transaction('rw', [...SYNC_TABLES.map(table), db.settings], async () => {
     for (const t of SYNC_TABLES) await table(t).clear();
     await db.materials.bulkAdd(seedMaterials());
+    await db.versuchsarten.bulkAdd(seedVersuchsarten());
     for (const k of ['calculator', 'fits', 'defaultSystemId', 'lastExportAt', 'masterDir', 'lastMasterSyncAt']) await db.settings.delete(k);
   });
 }

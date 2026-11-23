@@ -87,6 +87,32 @@ export function ImportPreview({ source, file, plan, issues, busy, applyLabel = '
           </ul>
         </div>
       )}
+      {plan.probenConflicts.length > 0 && (
+        <div className="notice notice-warn">
+          <strong>Konflikte bei Proben-IDs ({plan.probenConflicts.length}):</strong> gleiche ID, aber verschiedene Proben. Beide
+          werden behalten, die importierte bekommt ein Suffix:
+          <ul>
+            {plan.probenConflicts.map((c) => (
+              <li key={c.id}>
+                {c.wert} → <strong>{c.umbenanntIn}</strong>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {plan.artConflicts.length > 0 && (
+        <div className="notice notice-warn">
+          <strong>Versuchsart-Kürzel doppelt ({plan.artConflicts.length}):</strong> auf zwei Geräten unabhängig angelegt. Die
+          importierte Art wird umbenannt; Versuchs-IDs bleiben unverändert:
+          <ul>
+            {plan.artConflicts.map((c) => (
+              <li key={c.id}>
+                {c.wert} → <strong>{c.umbenanntIn}</strong>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {plan.seriesCodeConflicts.length > 0 && (
         <div className="notice notice-warn">
           <strong>Reihen-Code doppelt:</strong> {plan.seriesCodeConflicts.join(', ')} gibt es danach mehrfach (auf zwei Geräten

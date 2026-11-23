@@ -19,7 +19,8 @@
   zusätzlich als Snapshot gespeichert (mit Formelversion), damit spätere Korrekturen nachvollziehbar sind.
 - **Matrix-Generator:** Reihe aus Parametergitter erzeugen (z. B. Pulsenergie × Pulszahl), vergibt fortlaufende IDs.
 - **Duplizieren** eines Versuchs als Vorlage (häufigster Arbeitsablauf im Labor).
-- Versuchs-ID-Schema: `<Reihe>-<Material>-<lfd. Nr. 3-stellig>`, z. B. `B1-Si-001`. Lfd. Nr. automatisch.
+- Versuchs-ID-Schema: `<Reihe>-<Art>-<lfd. Nr. 3-stellig>`, z. B. `K-SPOT-001`, `B1-ABL-004`. Lfd. Nr. automatisch je Reihe + Art;
+  IDs werden nie geändert und nie wiederverwendet (ab 0.11). Proben-ID `<Werkstoffkürzel>-<NNN>`, z. B. `FS-001`.
 - Liste mit Filter (Reihe, Material, Anlage, Tag, Zeitraum) und Volltextsuche.
 
 ### 2. Rechner
@@ -48,7 +49,7 @@
 
 ### 5. Notizen
 - Datierte Einträge (Tagebuch) und freie Notizen, Markdown + KaTeX, Tags, Verlinkung auf Versuche/Reihen
-  (`[[B1-Si-001]]`).
+  (`[[B1-ABL-001]]`).
 - Formelsammlung (statisch, aus `04_formeln.md` generiert) als Nachschlagewerk.
 
 ## Querschnitt

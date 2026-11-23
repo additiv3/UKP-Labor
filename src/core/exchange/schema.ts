@@ -10,10 +10,11 @@ import {
   MATERIAL_CLASSES,
   STATION_ARTEN,
   SYNC_TABLES,
+  W0_QUELLEN,
   type SyncEntityMap,
   type SyncTable,
 } from '../../data/types';
-import { upgradeRecord } from './migrate';
+import { upgradeData } from './migrate';
 
 export const APP_ID = 'ukp-labor';
 
@@ -166,8 +167,9 @@ export const litValueSchema = z.looseObject({
 
 export const sampleSchema = z.looseObject({
   ...base,
+  probenId: z.string().min(1, 'Proben-ID fehlt'),
   materialId: z.string(),
-  bezeichnung: z.string(),
+  bezeichnung: optStr,
   lieferant: optStr,
   charge: optStr,
   dicke: optNum,
@@ -177,6 +179,14 @@ export const sampleSchema = z.looseObject({
   notiz: optStr,
 });
 
+export const versuchsartSchema = z.looseObject({
+  ...base,
+  kuerzel: z.string().min(1, 'Kürzel fehlt'),
+  name: z.string(),
+  beschreibung: optStr,
+  seed: z.boolean().optional(),
+});
+
 export const seriesSchema = z.looseObject({
   ...base,
   code: z.string(),
@@ -184,18 +194,24 @@ export const seriesSchema = z.looseObject({
   ziel: optStr,
   status: z.enum(['geplant', 'laufend', 'abgeschlossen']),
   notizen: optStr,
+  standardVersuchsartId: optStr,
 });
 
 export const experimentSchema = z.looseObject({
   ...base,
   versuchsId: z.string().min(1),
+  versuchsartId: optStr,
+  idFixiert: z.boolean().optional(),
   seriesId: z.string(),
   datum: isoDate,
   systemId: optStr,
   laserId: optStr,
   optikId: optStr,
   scannerId: optStr,
+  stationId: optStr,
+  strahlengangId: optStr,
   sampleId: optStr,
+  probenFeld: optStr,
   materialId: optStr,
   params: z.looseObject({
     lambda: optNum,
@@ -206,7 +222,8 @@ export const experimentSchema = z.looseObject({
     burst: z.looseObject({ anzahl: optNum, freq: optNum, info: optStr }).optional(),
     transmission: optNum,
     w0: optNum,
-    w0Quelle: z.enum(['datenblatt', 'berechnet', 'd2', 'geschaetzt']).optional(),
+    w0Quelle: z.enum(W0_QUELLEN).optional(),
+    w0Beleg: optStr,
     m2: optNum,
     fokuslage: optNum,
     v: optNum,
@@ -240,6 +257,7 @@ export const ENTITY_SCHEMAS: Record<SyncTable, z.ZodType> = {
   materials: materialSchema,
   litValues: litValueSchema,
   samples: sampleSchema,
+  versuchsarten: versuchsartSchema,
   series: seriesSchema,
   experiments: experimentSchema,
   notes: noteSchema,
@@ -268,7 +286,7 @@ export interface ExportFile {
 }
 
 export function emptyData(): ExportData {
-  return { systems: [], components: [], materials: [], litValues: [], samples: [], series: [], experiments: [], notes: [] };
+  return { systems: [], components: [], materials: [], litValues: [], samples: [], versuchsarten: [], series: [], experiments: [], notes: [] };
 }
 
 export interface ValidationIssue {
@@ -307,11 +325,16 @@ export function parseExport(text: string, currentSchemaVersion: number): ParseRe
   }
   const issues: ValidationIssue[] = [];
   const data = emptyData();
+  // Ältere Dateien erst auf das aktuelle Schema heben (gleiche Migration wie in der Datenbank)
+  const tables = Object.fromEntries(
+    SYNC_TABLES.map((t) => [t, structuredClone((head.data.data[t] as unknown[] | undefined) ?? [])]),
+  ) as Record<SyncTable, unknown[]>;
+  upgradeData(tables, head.data.schemaVersion);
   for (const t of SYNC_TABLES) {
     const arr = (head.data.data[t] as unknown[] | undefined) ?? [];
-    arr.forEach((rec, index) => {
-      // Ältere Dateien erst auf das aktuelle Schema heben (gleiche Migration wie in der Datenbank)
-      const r = ENTITY_SCHEMAS[t].safeParse(upgradeRecord(t, structuredClone(rec), head.data.schemaVersion));
+    tables[t].forEach((up, index) => {
+      const rec = arr[index];
+      const r = ENTITY_SCHEMAS[t].safeParse(up);
       if (r.success) (data[t] as unknown[]).push(r.data);
       else {
         const id = typeof rec === 'object' && rec && 'id' in rec ? String((rec as { id: unknown }).id) : undefined;

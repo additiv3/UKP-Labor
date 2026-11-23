@@ -28,3 +28,4 @@ Zwei Repos (siehe `CLAUDE.md`):
 | v0.8.0 | 2026-11-14 | `0a1d76a` | `f5ee8f1` (Tag nachgetragen 2026-11-16) |
 | v0.9.0 | 2026-11-16 | siehe Tag | siehe Tag |
 | v0.10.0 | 2026-11-19 | siehe Tag | siehe Tag |
+| v0.11.0 | 2026-11-23 | siehe Tag | siehe Tag |

@@ -107,7 +107,7 @@ function NoteList() {
       )}
       {notes.length === 0 ? (
         <EmptyState title="Noch keine Notizen">
-          <p>Tagebuch für den Labortag, Notizen für Wissen. Markdown, Formeln mit $…$ und Verweise wie [[B1-Si-001]].</p>
+          <p>Tagebuch für den Labortag, Notizen für Wissen. Markdown, Formeln mit $…$ und Verweise wie [[B1-ABL-001]].</p>
         </EmptyState>
       ) : shown.length === 0 ? (
         <p className="muted">Nichts gefunden.</p>
